@@ -1097,865 +1097,343 @@ input::placeholder,textarea::placeholder{color:#68727f}
 }
 
 /* =========================================================
-
-/* =========================================================
-   NOCTURNE CASE ENGINE HUD
-   FINAL CLEAN VERSION
-   =========================================================
-   IMPORTANT:
-   - Hero spacing is preserved.
-   - HUD is positioned relative to #landing, not .hero.
-   - HUD effects cannot create page scroll.
-   - CASE ENGINE remains plain text.
-   - One HUD implementation only.
+   NOCTURNE LIVE CASE LAYOUT
+   Symmetrical rail + live feed + visual evidence
    ========================================================= */
 
+@media(min-width:1051px){
+  .grid{
+    grid-template-columns:260px minmax(520px,1fr) 340px;
+    gap:18px;
+  }
 
-/* The landing section owns the HUD coordinate system. */
-#landing{
-  position:relative;
-  min-height:calc(100vh - 78px);
-  height:calc(100vh - 78px);
-  display:grid;
-  place-items:center;
-  overflow:hidden;
+  .grid>aside,
+  .grid>article{
+    min-width:0;
+  }
+
+  #leftSide,
+  #rightSide,
+  .grid>article{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+
+  .grid .panel{
+    margin-bottom:0;
+  }
+
+  /* The three columns now feel like one dashboard instead of three
+     unrelated stacks. */
+  #leftSide .panel,
+  #rightSide .panel,
+  .grid>article .panel{
+    width:100%;
+  }
+
+  /* People and Locations share the same visual list treatment. */
+  #leftSide .scrollList{
+    max-height:290px;
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+
+  #leftSide .panel:has(#locations) .scrollList{
+    max-height:290px;
+  }
+
+  /* Case feed is the main live timeline. */
+  .feed{
+    min-height:320px;
+  }
+
+  #events{
+    height:320px;
+    max-height:320px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    scrollbar-width:thin;
+    scrollbar-color:#59616b #080a0d;
+  }
+
+  /* Actions occupy the larger central workspace. */
+  .actions{
+    min-height:500px;
+  }
+
+  /* Right rail gets real content rather than a lonely paragraph. */
+  .chat{
+    height:330px;
+  }
+
+  #chat{
+    height:250px;
+  }
+
+  .quickVisualPanel{
+    min-height:315px;
+  }
+
+  .tips{
+    min-height:150px;
+  }
 }
 
-
-/* Keep the original hero dimensions and spacing. */
-#landing .hero{
-  position:static;
-  z-index:3;
+/* One scrollbar language across all NOCTURNE scroll areas. */
+.scrollList,
+#events,
+#chat,
+#tabs{
+  scrollbar-width:thin;
+  scrollbar-color:#59616b #080a0d;
 }
 
-
-/* Remove the bottom padding only for the landing page.
-   Other NOCTURNE pages keep their original main spacing. */
-main:has(#landing){
-  padding-bottom:0;
+.scrollList::-webkit-scrollbar,
+#events::-webkit-scrollbar,
+#chat::-webkit-scrollbar,
+#tabs::-webkit-scrollbar{
+  width:7px;
+  height:7px;
 }
 
-
-/* =========================================================
-   HUD CIRCLE
-   ========================================================= */
-
-#landing > .orb{
-  position:absolute;
-
-  /* fixed visual footprint */
-  width:300px;
-  height:300px;
-
-  /* right side, vertically centered */
-  right:2.5%;
-  left:auto;
-  top:50%;
-  bottom:auto;
-
-  transform:translateY(-50%);
-
-  display:grid;
-  place-items:center;
-
-  border:1px solid rgba(217,255,98,.34);
-  border-radius:50%;
-
-  background:
-    radial-gradient(
-      circle at 50% 48%,
-      rgba(217,255,98,.15) 0%,
-      rgba(126,158,80,.085) 20%,
-      rgba(38,54,35,.065) 40%,
-      rgba(7,11,9,.94) 70%,
-      #030506 100%
-    );
-
-  text-align:center;
-
-  isolation:isolate;
-  overflow:visible;
-
-  z-index:4;
-
-  box-shadow:
-    0 0 16px rgba(217,255,98,.14),
-    0 0 38px rgba(217,255,98,.11),
-    0 0 75px rgba(217,255,98,.075),
-    0 0 120px rgba(217,255,98,.035),
-    inset 0 0 38px rgba(217,255,98,.055),
-    inset 0 0 90px rgba(0,0,0,.92);
-
-  animation:nocturneHudBreath 5s ease-in-out infinite;
+.scrollList::-webkit-scrollbar-track,
+#events::-webkit-scrollbar-track,
+#chat::-webkit-scrollbar-track,
+#tabs::-webkit-scrollbar-track{
+  background:#080a0d;
 }
 
-
-/* Inner ring */
-#landing > .orb::before{
-  content:"";
-
-  position:absolute;
-  inset:16px;
-
-  border:1px solid rgba(217,255,98,.30);
-  border-radius:50%;
-
-  background:
-    radial-gradient(
-      circle,
-      transparent 55%,
-      rgba(217,255,98,.018) 72%,
-      rgba(217,255,98,.065) 100%
-    );
-
-  box-shadow:
-    inset 0 0 25px rgba(217,255,98,.035),
-    0 0 10px rgba(217,255,98,.10);
-
-  pointer-events:none;
-  z-index:1;
+.scrollList::-webkit-scrollbar-thumb,
+#events::-webkit-scrollbar-thumb,
+#chat::-webkit-scrollbar-thumb,
+#tabs::-webkit-scrollbar-thumb{
+  background:#59616b;
+  border-radius:999px;
+  border:1px solid #080a0d;
 }
 
-
-/* Rotating outer radar ring */
-#landing > .orb::after{
-  content:"";
-
-  position:absolute;
-  inset:-11px;
-
-  border:1px dashed rgba(217,255,98,.38);
-  border-radius:50%;
-
-  box-shadow:
-    0 0 8px rgba(217,255,98,.16),
-    0 0 20px rgba(217,255,98,.08);
-
-  pointer-events:none;
-  z-index:2;
-
-  animation:nocturneRadarSpin 18s linear infinite;
+.scrollList::-webkit-scrollbar-thumb:hover,
+#events::-webkit-scrollbar-thumb:hover,
+#chat::-webkit-scrollbar-thumb:hover,
+#tabs::-webkit-scrollbar-thumb:hover{
+  background:#7b838d;
 }
 
-
-/* =========================================================
-   HUD CONTENT
-   ========================================================= */
-
-#landing > .orb > div{
-  position:relative;
-
-  z-index:6;
-
-  width:100%;
-  height:100%;
-
+/* Live feed details */
+.event small{
   display:flex;
-  flex-direction:column;
-
   align-items:center;
-  justify-content:center;
-
   gap:7px;
-
-  text-align:center;
 }
 
-
-/* Horizontal scanner */
-#landing > .orb > div::before{
-  content:"";
-
-  position:absolute;
-
-  left:-100px;
-  right:-100px;
-
-  top:50%;
-
-  height:1px;
-
-  background:
-    linear-gradient(
-      90deg,
-      transparent 0%,
-      transparent 17%,
-      rgba(217,255,98,.04) 28%,
-      rgba(217,255,98,.20) 40%,
-      rgba(217,255,98,.88) 49%,
-      rgba(217,255,98,.88) 51%,
-      rgba(217,255,98,.20) 60%,
-      rgba(217,255,98,.04) 72%,
-      transparent 83%,
-      transparent 100%
-    );
-
-  box-shadow:
-    0 0 5px rgba(217,255,98,.60),
-    0 0 15px rgba(217,255,98,.25);
-
-  pointer-events:none;
-}
-
-
-/* Vertical scanner */
-#landing > .orb > div::after{
-  content:"";
-
-  position:absolute;
-
-  top:-100px;
-  bottom:-100px;
-
-  left:50%;
-
-  width:1px;
-
-  background:
-    linear-gradient(
-      180deg,
-      transparent 0%,
-      transparent 17%,
-      rgba(217,255,98,.04) 28%,
-      rgba(217,255,98,.20) 40%,
-      rgba(217,255,98,.88) 49%,
-      rgba(217,255,98,.88) 51%,
-      rgba(217,255,98,.20) 60%,
-      rgba(217,255,98,.04) 72%,
-      transparent 83%,
-      transparent 100%
-    );
-
-  box-shadow:
-    0 0 5px rgba(217,255,98,.60),
-    0 0 15px rgba(217,255,98,.25);
-
-  pointer-events:none;
-}
-
-
-/* CASE ENGINE remains plain text */
-#landing > .orb span{
-  position:relative;
-  z-index:7;
-
-  color:#b9c5b7;
-
-  font-family:"IBM Plex Mono",monospace;
-  font-size:10px;
-
-  text-shadow:
-    0 0 7px rgba(217,255,98,.16),
-    0 0 15px rgba(217,255,98,.06);
-}
-
-
-/* READY */
-#landing > .orb b{
-  position:relative;
-  z-index:7;
-
-  color:#d9ff62;
-
-  font-size:22px;
-  letter-spacing:.08em;
-
-  text-shadow:
-    0 0 5px rgba(217,255,98,.95),
-    0 0 12px rgba(217,255,98,.78),
-    0 0 25px rgba(217,255,98,.52),
-    0 0 45px rgba(217,255,98,.22);
-
-  animation:nocturneReadyGlow 2.8s ease-in-out infinite;
-}
-
-
-/* Player count */
-#landing > .orb small{
-  position:relative;
-  z-index:7;
-
-  color:#aab8a5;
-
-  font-family:"IBM Plex Mono",monospace;
-  font-size:10px;
-
-  text-shadow:
-    0 0 7px rgba(217,255,98,.14);
-}
-
-
-/* Top radar node */
-#landing > .orb > div > span::before{
-  content:"";
-
-  position:absolute;
-
-  width:6px;
-  height:6px;
-
-  left:50%;
-  top:-78px;
-
-  transform:translateX(-50%);
-
-  border-radius:50%;
-
-  background:#d9ff62;
-
-  box-shadow:
-    0 0 4px #d9ff62,
-    0 0 10px #d9ff62,
-    0 0 22px rgba(217,255,98,.80),
-    0 0 38px rgba(217,255,98,.35);
-
-  animation:nocturneNodePulse 2.2s ease-in-out infinite;
-}
-
-
-/* Bottom radar node */
-#landing > .orb > div > span::after{
-  content:"";
-
-  position:absolute;
-
+.eventLiveDot{
   width:5px;
   height:5px;
+  flex:0 0 5px;
+  border-radius:50%;
+  background:#66717d;
+}
 
+.eventLiveDot.live{
+  background:var(--accent);
+  box-shadow:0 0 8px rgba(217,255,98,.65);
+  animation:eventPulse 1.5s ease-in-out infinite;
+}
+
+.event.LIVE{
+  border-left-color:var(--accent);
+  background:rgba(217,255,98,.025);
+}
+
+.event.LIVE p{
+  color:#e8f0df;
+}
+
+@keyframes eventPulse{
+  0%,100%{opacity:.45;transform:scale(.8)}
+  50%{opacity:1;transform:scale(1.15)}
+}
+
+/* =========================================================
+   LIVE VISUAL EVIDENCE CARD
+   ========================================================= */
+
+.quickVisual{
+  padding:14px;
+}
+
+.quickVisualFrame{
+  position:relative;
+  height:185px;
+  overflow:hidden;
+  border:1px solid var(--line2);
+  border-radius:9px;
+  background:
+    radial-gradient(circle at 50% 48%,rgba(217,255,98,.08),transparent 35%),
+    linear-gradient(145deg,#10151b,#07090c);
+}
+
+.quickVisualFrame.hasImage img{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  filter:saturate(.72) contrast(1.05) brightness(.72);
+}
+
+.quickVisualGrid{
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(rgba(217,255,98,.045) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(217,255,98,.045) 1px,transparent 1px);
+  background-size:28px 28px;
+  opacity:.5;
+}
+
+.quickVisualReticle{
+  position:absolute;
   left:50%;
-  bottom:-78px;
-
-  transform:translateX(-50%);
-
+  top:50%;
+  width:72px;
+  height:72px;
+  transform:translate(-50%,-50%);
+  border:1px solid rgba(217,255,98,.42);
   border-radius:50%;
-
-  background:#d9ff62;
-
   box-shadow:
-    0 0 4px #d9ff62,
-    0 0 10px rgba(217,255,98,.85),
-    0 0 24px rgba(217,255,98,.40);
-
-  animation:nocturneNodePulse 2.2s ease-in-out infinite reverse;
+    0 0 15px rgba(217,255,98,.08),
+    inset 0 0 15px rgba(217,255,98,.05);
 }
 
-
-/* =========================================================
-   GREEN ATMOSPHERE
-   ========================================================= */
-
-#landing > .orb{
-  --hud-glow:rgba(217,255,98,.14);
-}
-
-
-/* Large soft aura */
-#landing .hero + .orb{
-  /* keeps the actual orb above its atmospheric glow */
-  filter:none;
-}
-
-
-/* The atmosphere is created without changing layout geometry. */
-#landing::before{
+.quickVisualReticle::before,
+.quickVisualReticle::after{
   content:"";
-
   position:absolute;
-
-  width:600px;
-  height:600px;
-
-  right:calc(2.5% - 150px);
-  top:50%;
-
-  transform:translateY(-50%);
-
-  border-radius:50%;
-
-  background:
-    radial-gradient(
-      circle,
-      rgba(217,255,98,.085) 0%,
-      rgba(217,255,98,.048) 22%,
-      rgba(217,255,98,.022) 43%,
-      rgba(217,255,98,.008) 61%,
-      transparent 75%
-    );
-
-  filter:blur(22px);
-
-  opacity:.85;
-
-  pointer-events:none;
-
-  z-index:1;
-
-  animation:nocturneAtmosphere 5.5s ease-in-out infinite;
+  background:rgba(217,255,98,.36);
 }
 
+.quickVisualReticle::before{
+  left:50%;
+  top:-18px;
+  bottom:-18px;
+  width:1px;
+}
 
-/* Smaller concentrated glow */
-#landing::after{
-  content:"";
+.quickVisualReticle::after{
+  top:50%;
+  left:-18px;
+  right:-18px;
+  height:1px;
+}
 
+.quickVisualLabel,
+.quickVisualHud{
   position:absolute;
-
-  width:390px;
-  height:390px;
-
-  right:calc(2.5% - 45px);
-  top:50%;
-
-  transform:translateY(-50%);
-
-  border-radius:50%;
-
-  background:
-    radial-gradient(
-      circle,
-      rgba(217,255,98,.085) 0%,
-      rgba(217,255,98,.040) 35%,
-      transparent 70%
-    );
-
-  filter:blur(15px);
-
-  opacity:.70;
-
-  pointer-events:none;
-
-  z-index:1;
-
-  animation:nocturneOuterGlow 5.5s ease-in-out infinite;
+  left:10px;
+  right:10px;
+  top:9px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  color:#aeb8ae;
+  font-family:"IBM Plex Mono",monospace;
+  font-size:8px;
+  letter-spacing:.06em;
 }
 
-
-/* =========================================================
-   ANIMATIONS
-   ========================================================= */
-
-@keyframes nocturneHudBreath{
-  0%,100%{
-    box-shadow:
-      0 0 16px rgba(217,255,98,.11),
-      0 0 38px rgba(217,255,98,.08),
-      0 0 75px rgba(217,255,98,.055),
-      0 0 120px rgba(217,255,98,.025),
-      inset 0 0 38px rgba(217,255,98,.045),
-      inset 0 0 90px rgba(0,0,0,.92);
-  }
-
-  50%{
-    box-shadow:
-      0 0 23px rgba(217,255,98,.20),
-      0 0 52px rgba(217,255,98,.13),
-      0 0 100px rgba(217,255,98,.085),
-      0 0 145px rgba(217,255,98,.045),
-      inset 0 0 50px rgba(217,255,98,.075),
-      inset 0 0 90px rgba(0,0,0,.88);
-  }
+.quickVisualLabel b,
+.quickVisualHud b{
+  color:var(--accent);
 }
 
-
-@keyframes nocturneRadarSpin{
-  from{transform:rotate(0deg);}
-  to{transform:rotate(360deg);}
+.quickVisualHud{
+  bottom:9px;
+  top:auto;
+  padding:7px 8px;
+  background:rgba(3,5,6,.72);
+  border:1px solid rgba(217,255,98,.15);
+  border-radius:6px;
 }
 
-
-@keyframes nocturneReadyGlow{
-  0%,100%{
-    text-shadow:
-      0 0 5px rgba(217,255,98,.78),
-      0 0 12px rgba(217,255,98,.58),
-      0 0 25px rgba(217,255,98,.28);
-  }
-
-  50%{
-    text-shadow:
-      0 0 6px rgba(217,255,98,1),
-      0 0 15px rgba(217,255,98,.90),
-      0 0 30px rgba(217,255,98,.60),
-      0 0 48px rgba(217,255,98,.22);
-  }
+.quickVisualScan{
+  position:absolute;
+  left:0;
+  right:0;
+  height:1px;
+  top:25%;
+  background:rgba(217,255,98,.58);
+  box-shadow:0 0 9px rgba(217,255,98,.45);
+  animation:quickScan 3.2s linear infinite;
 }
 
-
-@keyframes nocturneNodePulse{
-  0%,100%{
-    opacity:.45;
-  }
-
-  50%{
-    opacity:1;
-  }
+@keyframes quickScan{
+  0%{top:10%;opacity:0}
+  10%{opacity:.8}
+  50%{opacity:.5}
+  90%{opacity:.8}
+  100%{top:92%;opacity:0}
 }
 
-
-@keyframes nocturneAtmosphere{
-  0%,100%{
-    opacity:.48;
-  }
-
-  50%{
-    opacity:.82;
-  }
+.quickVisual>p{
+  margin:10px 0 11px;
+  color:#9fa9b4;
+  font-size:12px;
+  line-height:1.5;
 }
 
-
-@keyframes nocturneOuterGlow{
-  0%,100%{
-    opacity:.42;
-  }
-
-  50%{
-    opacity:.72;
-  }
+.quickVisualBtns{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px;
 }
 
-
-/* =========================================================
-   RESPONSIVE
-   ========================================================= */
-
-@media(max-width:1100px){
-
-  #landing > .orb{
-    width:270px;
-    height:270px;
-    right:1.5%;
-  }
-
-  #landing::before{
-    right:calc(1.5% - 130px);
-  }
-
-  #landing::after{
-    right:calc(1.5% - 35px);
-  }
+.quickVisualBtns button{
+  padding:9px 8px;
+  font-family:"IBM Plex Mono",monospace;
+  font-size:9px;
+  letter-spacing:.035em;
 }
 
+/* On smaller screens, keep the dashboard readable rather than stacking
+   three narrow columns with competing scrollbars. */
+@media(max-width:1050px){
+  .grid{
+    grid-template-columns:220px minmax(0,1fr);
+  }
+
+  #rightSide{
+    grid-column:1/-1;
+    display:grid;
+    grid-template-columns:1.3fr 1fr 1fr;
+    gap:16px;
+  }
+
+  .chat{
+    height:360px;
+  }
+
+  #chat{
+    height:280px;
+  }
+}
 
 @media(max-width:760px){
-
-  #landing{
-    min-height:auto;
-    height:auto;
-    overflow:hidden;
+  #rightSide{
+    display:block;
   }
 
-  #landing .hero{
-    position:relative;
+  #rightSide .panel{
+    margin-bottom:16px;
   }
 
-  #landing > .orb{
-    position:relative;
-
-    width:250px;
-    height:250px;
-
-    top:auto;
-    right:auto;
-    bottom:auto;
-    left:auto;
-
-    transform:none;
-
-    margin:40px auto 20px;
-  }
-
-  #landing::before{
-    width:430px;
-    height:430px;
-
-    right:50%;
-    top:auto;
-    bottom:-25px;
-
-    transform:translateX(50%);
-  }
-
-  #landing::after{
-    width:310px;
-    height:310px;
-
-    right:50%;
-    top:auto;
-    bottom:5px;
-
-    transform:translateX(50%);
-  }
-
-  #landing > .orb > div::before{
-    left:-65px;
-    right:-65px;
-  }
-
-  #landing > .orb > div::after{
-    top:-65px;
-    bottom:-65px;
-  }
-}
-
-
-@media(max-width:520px){
-
-  #landing > .orb{
-    width:220px;
+  .quickVisualFrame{
     height:220px;
   }
 
-  #landing > .orb > div > span::before{
-    top:-62px;
-  }
-
-  #landing > .orb > div > span::after{
-    bottom:-62px;
+  #events{
+    max-height:420px;
   }
 }
 
-
-/* Prevent decorative HUD layers from ever creating page-level overflow. */
-html,
-body{
-  overflow-x:hidden;
-}
-
-
-/* =========================================================
-   NOCTURNE LOCATIONS PANEL
-   FINAL ALIGNMENT FIX
-   ========================================================= */
-
-/* Keep Locations visually aligned with the People panel. */
-.panel.locations,
-.locations{
-  width:100%;
-  box-sizing:border-box;
-}
-
-/* Header spacing and typography */
-.locations h3,
-.locations .panelTitle,
-.locations .panelHead{
-  box-sizing:border-box;
-}
-
-/* Location list uses the same readable card rhythm as People. */
-.locations .loc,
-.locations .location,
-.locations .locationCard{
-  box-sizing:border-box;
-  width:100%;
-  padding:18px 20px;
-  margin:0;
-  border-bottom:1px solid var(--line);
-}
-
-/* Location name */
-.locations .loc b,
-.locations .location b,
-.locations .locationCard b,
-.locations .loc strong,
-.locations .location strong,
-.locations .locationCard strong{
-  display:block;
-  font-size:16px;
-  line-height:1.35;
-  font-weight:700;
-  color:var(--text);
-  margin:0 0 5px;
-}
-
-/* "currently present" line */
-.locations .loc span,
-.locations .location span,
-.locations .locationCard span{
-  display:block;
-  font-size:11px;
-  line-height:1.45;
-  color:var(--muted);
-}
-
-/* If the location component itself is the scroll container,
-   keep the scrollbar inside the panel without squeezing cards. */
-.locations{
-  overflow:hidden;
-}
-
-.locations .list,
-.locations .locationList,
-.locations .locList{
-  overflow-y:auto;
-  overflow-x:hidden;
-  box-sizing:border-box;
-  width:100%;
-}
-
-/* Slim scrollbar that matches the rest of NOCTURNE. */
-.locations ::-webkit-scrollbar{
-  width:10px;
-}
-
-.locations ::-webkit-scrollbar-track{
-  background:#080a0d;
-  border-left:1px solid var(--line);
-}
-
-.locations ::-webkit-scrollbar-thumb{
-  background:#6f747b;
-  border-radius:8px;
-  border:2px solid #080a0d;
-}
-
-.locations ::-webkit-scrollbar-thumb:hover{
-  background:#90969d;
-}
-
-/* Firefox */
-.locations{
-  scrollbar-width:auto;
-  scrollbar-color:#6f747b #080a0d;
-}
-
-/* Match the People card spacing on narrower screens. */
-@media(max-width:820px){
-  .locations .loc,
-  .locations .location,
-  .locations .locationCard{
-    padding:16px 16px;
-  }
-
-  .locations .loc b,
-  .locations .location b,
-  .locations .locationCard b,
-  .locations .loc strong,
-  .locations .location strong,
-  .locations .locationCard strong{
-    font-size:15px;
-  }
-}
-
-/* =========================================================
-   LOCATIONS PANEL ALIGNMENT
-   Match the PEOPLE panel structure exactly.
-   The HTML uses:
-     <div class="panel">
-       <h3>LOCATIONS</h3>
-       <div id="locations" class="scrollList">...</div>
-     </div>
-   ========================================================= */
-
-/* The Locations wrapper is a normal .panel, so target the panel
-   that actually contains #locations. */
-.panel:has(> #locations){
-  overflow:hidden;
-}
-
-/* Make LOCATIONS use the same header geometry as PEOPLE's .panelTitle. */
-.panel:has(> #locations) > h3{
-  display:block;
-  box-sizing:border-box;
-
-  width:100%;
-  margin:0;
-  padding:17px 19px;
-
-  border-bottom:1px solid var(--line);
-
-  color:#e9edf2;
-  font-family:"IBM Plex Mono",monospace;
-  font-size:12px;
-  font-weight:600;
-  line-height:1.2;
-  letter-spacing:.11em;
-}
-
-/* The location list itself should use the exact same scroll behavior
-   and width as the People list. */
-.panel:has(> #locations) > #locations{
-  display:block;
-  width:100%;
-  max-height:300px;
-
-  box-sizing:border-box;
-
-  overflow-y:auto;
-  overflow-x:hidden;
-
-  padding:7px 0;
-}
-
-/* Use the existing shared .loc geometry. These overrides only ensure
-   Locations does not inherit a different experimental spacing rule. */
-.panel:has(> #locations) > #locations .loc{
-  box-sizing:border-box;
-  width:100%;
-  padding:14px 17px;
-  margin:0;
-
-  border-bottom:1px solid rgba(255,255,255,.055);
-}
-
-.panel:has(> #locations) > #locations .loc:last-child{
-  border-bottom:0;
-}
-
-.panel:has(> #locations) > #locations .loc > b{
-  display:flex;
-  align-items:center;
-  gap:8px;
-
-  margin:4px 0;
-
-  color:#fff;
-  font-size:17px;
-  line-height:1.35;
-  font-weight:700;
-}
-
-.panel:has(> #locations) > #locations .loc > span{
-  display:block;
-
-  color:#98a2ae;
-  font-family:"IBM Plex Mono",monospace;
-  font-size:11px;
-  line-height:1.45;
-  letter-spacing:.025em;
-}
-
-/* Match the People scrollbar. */
-.panel:has(> #locations) > #locations::-webkit-scrollbar{
-  width:10px;
-}
-
-.panel:has(> #locations) > #locations::-webkit-scrollbar-track{
-  background:#080a0d;
-  border-left:1px solid var(--line);
-}
-
-.panel:has(> #locations) > #locations::-webkit-scrollbar-thumb{
-  background:#6f747b;
-  border-radius:8px;
-  border:2px solid #080a0d;
-}
-
-.panel:has(> #locations) > #locations::-webkit-scrollbar-thumb:hover{
-  background:#90969d;
-}
-
-/* Keep both panels visually identical on smaller screens. */
-@media(max-width:480px){
-  .panel:has(> #locations) > h3{
-    padding:17px 19px;
-    font-size:12px;
-  }
-
-  .panel:has(> #locations) > #locations .loc{
-    padding:14px 17px;
-  }
-
-  .panel:has(> #locations) > #locations .loc > b{
-    font-size:16px;
-  }
-}
