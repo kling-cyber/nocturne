@@ -272,7 +272,10 @@ sock.on('disconnect',()=>{
 });
 
 sock.on('connect_error',error=>{
-  console.error('NOCTURNE Socket.IO connection error:',error);
+  console.error(
+    'NOCTURNE Socket.IO connection error:',
+    error
+  );
 
   setBusy(false);
 
@@ -377,21 +380,22 @@ sock.on('privateState',d=>{
 
 
 /*
- IMPORTANT FIX:
+  IMPORTANT FIX:
 
- The server sends stateUpdate after a player action.
+  The server sends stateUpdate after a player action.
 
- The old frontend updated S and rendered the game,
- but forgot to call setBusy(false).
+  The old frontend updated S and rendered the game,
+  but forgot to call setBusy(false).
 
- That caused the permanent:
+  That caused the permanent:
 
- "Resolving action and NPC reactions..."
+  "Resolving action and NPC reactions..."
 
- overlay.
+  overlay.
 
- Now every state update clears the loading state.
+  Every state update now clears the loading state.
 */
+
 sock.on('stateUpdate',d=>{
   setBusy(false);
 
@@ -523,6 +527,7 @@ function renderPrivate(){
     Single Player:
     Human is never the Killer, so this remains hidden.
   */
+
   if(
     window.NOCTURNE_MODE!=="SINGLE_PLAYER"
     &&
@@ -631,6 +636,7 @@ function render(){
         :'MULTIPLAYER';
   }
 
+
   /* PEOPLE */
 
   if($('people')){
@@ -670,6 +676,7 @@ function render(){
       `).join('');
   }
 
+
   /* LOCATIONS */
 
   if($('locations')){
@@ -693,7 +700,8 @@ function render(){
       `).join('');
   }
 
-  /* EVENTS */
+
+  /* EVENTS / LIVE CASE FEED */
 
   if($('events')){
     $('events').innerHTML=
@@ -817,15 +825,47 @@ function render(){
   /* EVIDENCE */
 
   if($('evidence')){
+
+    /*
+      Frontend safety deduplication.
+
+      If the server sends repeated visual/evidence records
+      with the same title/type/source, only the newest one
+      is displayed.
+
+      This prevents repeated identical evidence cards from
+      flooding the evidence section.
+    */
+
+    const uniqueEvidence=[];
+    const seen=new Set();
+
+    S.evidence
+      .slice()
+      .reverse()
+      .forEach(e=>{
+
+        const key=[
+          e.type||'',
+          e.title||'',
+          e.source||'',
+          e.description||''
+        ].join('::');
+
+        if(!seen.has(key)){
+          seen.add(key);
+          uniqueEvidence.push(e);
+        }
+
+      });
+
     $('evidence').innerHTML=
-      S.evidence.length
+      uniqueEvidence.length
         ?`
           <div class="egrid">
 
             ${
-              S.evidence
-                .slice()
-                .reverse()
+              uniqueEvidence
                 .map(e=>`
                   <div class="ev">
 
@@ -833,8 +873,9 @@ function render(){
                       e.image
                         ?`
                           <img
-                            src="${e.image}"
-                            alt="Case evidence image"
+                            src="${esc(e.image)}"
+                            alt="${esc(e.title||'Case evidence image')}"
+                            loading="lazy"
                           >
                         `
                         :''
@@ -895,7 +936,7 @@ function render(){
             <br>
             ${esc(S.world.name)}
             <br>
-            ${S.clock}
+            ${esc(S.clock)}
           </div>
 
           <div class="scan"></div>
@@ -1045,6 +1086,7 @@ function render(){
                 ${p.suspicion}%
                 · accuse this person
               </p>
+
             </div>
           `).join('')
         }
@@ -1144,7 +1186,49 @@ function prefill(x){
   },0);
 }
 
+
+/*
+  Temporary immediate live-feed entry.
+
+  This appears immediately when the player submits
+  an action, then the authoritative server state
+  replaces it when stateUpdate arrives.
+*/
+
+function addLiveFeedEntry(text){
+  const events=$('events');
+
+  if(!events)return;
+
+  const node=document.createElement('div');
+
+  node.className='event LIVE';
+
+  node.innerHTML=`
+    <small>
+      <span class="eventLiveDot live"></span>
+      ${esc(S?.clock||'--:--')} · LIVE
+    </small>
+
+    <p>
+      ${esc(text)}
+    </p>
+  `;
+
+  events.prepend(node);
+
+  while(
+    events.querySelectorAll('.event.LIVE').length>4
+  ){
+    events
+      .querySelector('.event.LIVE:last-child')
+      ?.remove();
+  }
+}
+
+
 function send(){
+
   const x=
     $('free')?.value.trim();
 
@@ -1155,6 +1239,10 @@ function send(){
   }
 
   $('free').value='';
+
+  addLiveFeedEntry(
+    `ACTION QUEUED · ${x}`
+  );
 
   setBusy(
     true,
@@ -1175,6 +1263,7 @@ function send(){
 ========================= */
 
 function askSelected(){
+
   const target=
     $('qTarget')?.value;
 
@@ -1202,6 +1291,7 @@ function askSelected(){
 }
 
 function askPreset(kind){
+
   const el=$('qInput');
 
   if(el){
@@ -1213,6 +1303,7 @@ function askPreset(kind){
 }
 
 function answerQuestion(){
+
   if(!incomingQ)return;
 
   const a=
@@ -1248,6 +1339,7 @@ function closeQuestion(){
 ========================= */
 
 function investPrompt(mode){
+
   const target=
     $('investTarget')?.value.trim();
 
@@ -1258,11 +1350,13 @@ function investPrompt(mode){
   }
 
   if(mode==='question'){
+
     tab('question');
 
     const select=$('qTarget');
 
     if(select){
+
       const match=
         [...select.options]
           .find(
@@ -1307,11 +1401,13 @@ function investPrompt(mode){
 ========================= */
 
 function accuse(id,name){
+
   if(
     confirm(
       `Accuse ${name}? This is public and cannot be taken lightly.`
     )
   ){
+
     setBusy(
       true,
       'Recording accusation…'
@@ -1332,6 +1428,7 @@ function accuse(id,name){
 ========================= */
 
 function visual(type){
+
   setBusy(
     true,
     type==='cctv'
@@ -1356,39 +1453,53 @@ function visual(type){
     If visual generation somehow fails to respond,
     don't leave the player trapped forever.
   */
+
   setTimeout(()=>{
+
     if(busy){
+
       setBusy(false);
 
       toast(
         'Visual request timed out. The case can continue.'
       );
     }
+
   },30000);
 }
 
+
 function showVisual(d){
+
   setBusy(false);
 
   const box=
     $('visualbox');
 
   if(box){
+
     box.innerHTML=`
+
       <img
-        src="${d.image}"
-        alt="${esc(d.title)}"
+        src="${esc(d.image||'')}"
+        alt="${esc(d.title||'Case visual evidence')}"
+        loading="lazy"
       >
 
       <div class="overlay">
-        ${esc(d.title)}
+        ${esc(d.title||'VISUAL EVIDENCE')}
         <br>
-        ${esc(d.description)}
+        ${esc(d.description||'')}
       </div>
 
       <div class="scan"></div>
+
     `;
   }
+
+  /*
+    Keep the visual evidence tab open after generation.
+  */
 
   tab('visual');
 }
@@ -1399,31 +1510,43 @@ function showVisual(d){
 ========================= */
 
 function addChat(name,text){
+
   const d=
     document.createElement('div');
 
   d.className='msg';
 
   d.innerHTML=`
-    <b>${esc(name)}</b>
-    <p>${esc(text)}</p>
+
+    <b>
+      ${esc(name)}
+    </b>
+
+    <p>
+      ${esc(text)}
+    </p>
+
   `;
 
   $('chat')?.appendChild(d);
 
   if($('chat')){
+
     $('chat').scrollTop=
       $('chat').scrollHeight;
+
   }
 }
 
 function sendChat(e){
+
   e.preventDefault();
 
   const x=
     $('chatin')?.value.trim();
 
   if(x){
+
     sock.emit(
       'chat',
       {
@@ -1443,10 +1566,13 @@ function sendChat(e){
 document.addEventListener(
   'keydown',
   e=>{
+
     if(e.key==='Escape'){
+
       closeModal();
       closeQuestion();
       closeAbout();
+
     }
 
     if(
@@ -1460,9 +1586,13 @@ document.addEventListener(
       &&
       document.activeElement?.id!=='chatin'
     ){
+
       e.preventDefault();
+
       submitSetup();
+
     }
+
   }
 );
 
