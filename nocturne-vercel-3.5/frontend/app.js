@@ -631,7 +631,6 @@ function render(){
         :'MULTIPLAYER';
   }
 
-
   /* PEOPLE */
 
   if($('people')){
@@ -671,7 +670,6 @@ function render(){
       `).join('');
   }
 
-
   /* LOCATIONS */
 
   if($('locations')){
@@ -695,8 +693,7 @@ function render(){
       `).join('');
   }
 
-
-  /* EVENTS / LIVE CASE FEED */
+  /* EVENTS */
 
   if($('events')){
     $('events').innerHTML=
@@ -705,7 +702,6 @@ function render(){
         .reverse()
         .map(e=>`
           <div class="event ${esc(e.type)}">
-
             <small>
               ${esc(e.time)} · ${esc(e.type)}
             </small>
@@ -713,7 +709,6 @@ function render(){
             <p>
               ${esc(e.text)}
             </p>
-
           </div>
         `)
         .join('');
@@ -739,7 +734,6 @@ function render(){
   if($('act')){
     $('act').innerHTML=`
       <div class="action-grid">
-
         ${
           [
             ['Talk','Talk to someone nearby'],
@@ -760,11 +754,9 @@ function render(){
           `)
           .join('')
         }
-
       </div>
 
       <div class="composer">
-
         <input
           id="free"
           maxlength="600"
@@ -778,7 +770,6 @@ function render(){
         >
           DO ACTION
         </button>
-
       </div>
     `;
   }
@@ -889,7 +880,7 @@ function render(){
   }
 
 
-  /* VISUAL EVIDENCE */
+  /* VISUAL */
 
   if($('visual')){
     $('visual').innerHTML=`
@@ -899,7 +890,6 @@ function render(){
           class="visualbox"
           id="visualbox"
         >
-
           <div class="overlay">
             CASE EVIDENCE NETWORK
             <br>
@@ -909,7 +899,6 @@ function render(){
           </div>
 
           <div class="scan"></div>
-
         </div>
 
         <p>
@@ -1049,17 +1038,13 @@ function render(){
                 '${js(p.name)}'
               )"
             >
-
-              <b>
-                ${esc(p.name)}
-              </b>
+              <b>${esc(p.name)}</b>
 
               <p>
                 Public suspicion
                 ${p.suspicion}%
                 · accuse this person
               </p>
-
             </div>
           `).join('')
         }
@@ -1159,45 +1144,6 @@ function prefill(x){
   },0);
 }
 
-
-/*
-  Adds a temporary LIVE entry immediately when
-  the player performs an action.
-
-  The authoritative server event will replace it
-  when stateUpdate arrives.
-*/
-function addLiveFeedEntry(text){
-  const events=$('events');
-
-  if(!events)return;
-
-  const node=document.createElement('div');
-
-  node.className='event LIVE';
-
-  node.innerHTML=`
-    <small>
-      ${esc(S?.clock||'--:--')} · LIVE
-    </small>
-
-    <p>
-      ${esc(text)}
-    </p>
-  `;
-
-  events.prepend(node);
-
-  while(
-    events.querySelectorAll('.event.LIVE').length>4
-  ){
-    events
-      .querySelector('.event.LIVE:last-child')
-      ?.remove();
-  }
-}
-
-
 function send(){
   const x=
     $('free')?.value.trim();
@@ -1209,14 +1155,6 @@ function send(){
   }
 
   $('free').value='';
-
-  /*
-    Immediately show the player's action in the
-    Case Feed with the current simulation timestamp.
-  */
-  addLiveFeedEntry(
-    `ACTION QUEUED · ${x}`
-  );
 
   setBusy(
     true,
