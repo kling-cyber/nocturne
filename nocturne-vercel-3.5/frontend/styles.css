@@ -1,576 +1,103 @@
 /* =========================================================
-   NOCTURNE HUD EFFECTS
-   EFFECTS ONLY
-   DOES NOT CHANGE ORB SIZE OR POSITION
-   ========================================================= */
-
-
-/* ---------------------------------------------------------
-   INNER HUD RING
-   --------------------------------------------------------- */
-
-.orb::before{
-  content:"";
-  position:absolute;
-  inset:16px;
-
-  border-radius:50%;
-  border:1px solid rgba(217,255,98,.22);
-
-  box-shadow:
-    0 0 10px rgba(217,255,98,.05),
-    inset 0 0 18px rgba(217,255,98,.025);
-
-  pointer-events:none;
-  z-index:0;
-}
-
-
-/* ---------------------------------------------------------
-   OUTER ROTATING RADAR RING
-   --------------------------------------------------------- */
-
-.orb::after{
-  content:"";
-  position:absolute;
-  inset:-13px;
-
-  border-radius:50%;
-  border:1px dashed rgba(217,255,98,.22);
-
-  box-shadow:
-    0 0 18px rgba(217,255,98,.055);
-
-  pointer-events:none;
-  z-index:0;
-
-  animation:
-    nocturneOrbRotate 18s linear infinite;
-}
-
-
-/* ---------------------------------------------------------
-   CONTENT LAYER
-   --------------------------------------------------------- */
-
-.orb > div{
-  position:relative;
-  z-index:5;
-
-  width:100%;
-  height:100%;
-
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-
-  gap:9px;
-  text-align:center;
-}
-
-
-/* ---------------------------------------------------------
-   CENTRAL HORIZONTAL HUD BEAM
-   --------------------------------------------------------- */
-
-.orb > div::before{
-  content:"";
-
-  position:absolute;
-
-  left:-75px;
-  right:-75px;
-
-  top:50%;
-
-  height:1px;
-
-  background:
-    linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(217,255,98,.08) 25%,
-      rgba(217,255,98,.75) 48%,
-      rgba(217,255,98,.75) 52%,
-      rgba(217,255,98,.08) 75%,
-      transparent 100%
-    );
-
-  box-shadow:
-    0 0 8px rgba(217,255,98,.35),
-    0 0 22px rgba(217,255,98,.15);
-
-  pointer-events:none;
-}
-
-
-/* ---------------------------------------------------------
-   CENTRAL VERTICAL HUD BEAM
-   --------------------------------------------------------- */
-
-.orb > div::after{
-  content:"";
-
-  position:absolute;
-
-  top:-75px;
-  bottom:-75px;
-
-  left:50%;
-
-  width:1px;
-
-  background:
-    linear-gradient(
-      180deg,
-      transparent 0%,
-      rgba(217,255,98,.08) 25%,
-      rgba(217,255,98,.70) 48%,
-      rgba(217,255,98,.70) 52%,
-      rgba(217,255,98,.08) 75%,
-      transparent 100%
-    );
-
-  box-shadow:
-    0 0 8px rgba(217,255,98,.30),
-    0 0 20px rgba(217,255,98,.12);
-
-  pointer-events:none;
-}
-
-
-/* ---------------------------------------------------------
-   CASE ENGINE LABEL
-   --------------------------------------------------------- */
-
-.orb span{
-  position:relative;
-
-  font-family:"IBM Plex Mono","Courier New",monospace;
-  font-size:10px;
-
-  color:#b9c3cf;
-
-  letter-spacing:.03em;
-  text-transform:uppercase;
-
-  text-shadow:
-    0 0 8px rgba(217,255,98,.10);
-}
-
-
-/* ---------------------------------------------------------
-   READY TEXT GLOW
-   --------------------------------------------------------- */
-
-.orb b{
-  position:relative;
-
-  font-family:"IBM Plex Mono","Courier New",monospace;
-  font-size:28px;
-  line-height:1;
-
-  color:var(--accent);
-
-  letter-spacing:.09em;
-  text-transform:uppercase;
-
-  text-shadow:
-    0 0 6px rgba(217,255,98,.65),
-    0 0 16px rgba(217,255,98,.35),
-    0 0 32px rgba(217,255,98,.16);
-
-  animation:
-    nocturneReadyPulse 2.8s ease-in-out infinite;
-}
-
-
-/* ---------------------------------------------------------
-   PLAYER COUNT
-   --------------------------------------------------------- */
-
-.orb small{
-  font-family:"IBM Plex Mono","Courier New",monospace;
-  font-size:10px;
-
-  color:#aab5c2;
-
-  letter-spacing:.035em;
-  text-transform:uppercase;
-
-  text-shadow:
-    0 0 8px rgba(217,255,98,.08);
-}
-
-
-/* ---------------------------------------------------------
-   TOP RADAR NODE
-   --------------------------------------------------------- */
-
-.orb > div > span:first-child::before{
-  content:"";
-
-  position:absolute;
-
-  width:7px;
-  height:7px;
-
-  border-radius:50%;
-
-  background:var(--accent);
-
-  box-shadow:
-    0 0 5px var(--accent),
-    0 0 14px rgba(217,255,98,.80),
-    0 0 28px rgba(217,255,98,.45);
-
-  left:50%;
-
-  transform:translateX(-50%);
-
-  top:-91px;
-
-  animation:
-    nocturneNodePulse 2s ease-in-out infinite;
-}
-
-
-/* ---------------------------------------------------------
-   BOTTOM RADAR NODE
-   --------------------------------------------------------- */
-
-.orb > div > span:first-child::after{
-  content:"";
-
-  position:absolute;
-
-  width:5px;
-  height:5px;
-
-  border-radius:50%;
-
-  background:var(--accent);
-
-  box-shadow:
-    0 0 5px var(--accent),
-    0 0 14px rgba(217,255,98,.65);
-
-  left:50%;
-
-  transform:translateX(-50%);
-
-  bottom:-91px;
-
-  animation:
-    nocturneNodePulse 2s ease-in-out infinite reverse;
-}
-
-
-/* ---------------------------------------------------------
-   ORB BREATHING GLOW
-   --------------------------------------------------------- */
-
-.orb{
-  animation:
-    nocturneOrbBreath 4.5s ease-in-out infinite;
-}
-
-
-/* ---------------------------------------------------------
-   LARGE SOFT OUTER GLOW
-   --------------------------------------------------------- */
-
-.hero::after{
-  content:"";
-
-  position:absolute;
-
-  width:340px;
-  height:340px;
-
-  right:calc(2% - 35px);
-  top:50%;
-
-  transform:translateY(-50%);
-
-  border-radius:50%;
-
-  background:
-    radial-gradient(
-      circle,
-      rgba(217,255,98,.045) 0%,
-      rgba(217,255,98,.018) 40%,
-      transparent 72%
-    );
-
-  filter:blur(12px);
-
-  pointer-events:none;
-
-  z-index:0;
-
-  animation:
-    nocturneOuterGlow 5s ease-in-out infinite;
-}
-
-
-/* =========================================================
-   ANIMATIONS
-   ========================================================= */
-
-
-/* ---------------------------------------------------------
-   ORB BREATHING
-   --------------------------------------------------------- */
-
-@keyframes nocturneOrbBreath{
-
-  0%,
-  100%{
-    box-shadow:
-      0 0 120px rgba(217,255,98,.07),
-      inset 0 0 80px rgba(0,0,0,.95);
-  }
-
-  50%{
-    box-shadow:
-      0 0 140px rgba(217,255,98,.14),
-      0 0 55px rgba(217,255,98,.055),
-      inset 0 0 90px rgba(0,0,0,.90);
-  }
-
-}
-
-
-/* ---------------------------------------------------------
-   READY PULSE
-   --------------------------------------------------------- */
-
-@keyframes nocturneReadyPulse{
-
-  0%,
-  100%{
-    opacity:.88;
-
-    text-shadow:
-      0 0 6px rgba(217,255,98,.55),
-      0 0 16px rgba(217,255,98,.28),
-      0 0 28px rgba(217,255,98,.10);
-  }
-
-  50%{
-    opacity:1;
-
-    text-shadow:
-      0 0 7px rgba(217,255,98,.90),
-      0 0 18px rgba(217,255,98,.55),
-      0 0 38px rgba(217,255,98,.25);
-  }
-
-}
-
-
-/* ---------------------------------------------------------
-   ROTATING RADAR
-   --------------------------------------------------------- */
-
-@keyframes nocturneOrbRotate{
-
-  from{
-    transform:rotate(0deg);
-  }
-
-  to{
-    transform:rotate(360deg);
-  }
-
-}
-
-
-/* ---------------------------------------------------------
-   NODE PULSE
-   --------------------------------------------------------- */
-
-@keyframes nocturneNodePulse{
-
-  0%,
-  100%{
-    opacity:.55;
-    transform:translateX(-50%) scale(.75);
-  }
-
-  50%{
-    opacity:1;
-    transform:translateX(-50%) scale(1.15);
-  }
-
-}
-
-
-/* ---------------------------------------------------------
-   OUTER GLOW PULSE
-   --------------------------------------------------------- */
-
-@keyframes nocturneOuterGlow{
-
-  0%,
-  100%{
-    opacity:.45;
-  }
-
-  50%{
-    opacity:.9;
-  }
-
-}
-
-
-/* =========================================================
-   MOBILE EFFECT ADJUSTMENTS
+   NOCTURNE CASE ENGINE HUD
+   CORRECTED EFFECT-ONLY VERSION
    IMPORTANT:
-   SIZE/POSITION OF THE EXISTING ORB ARE PRESERVED
-   ========================================================= */
-
-@media(max-width:720px){
-
-  .orb::before{
-    inset:12px;
-  }
-
-  .orb::after{
-    inset:-10px;
-  }
-
-  .orb > div::before{
-    left:-48px;
-    right:-48px;
-  }
-
-  .orb > div::after{
-    top:-48px;
-    bottom:-48px;
-  }
-
-  .orb > div > span:first-child::before{
-    top:-65px;
-  }
-
-  .orb > div > span:first-child::after{
-    bottom:-65px;
-  }
-
-  .hero::after{
-    width:210px;
-    height:210px;
-
-    right:50%;
-    top:auto;
-    bottom:10px;
-
-    transform:translateX(50%);
-  }
-
-}
-/* =========================================================
-   NOCTURNE CASE ENGINE
-   FULL COLOR HUD EFFECT
-   SIZE + POSITION UNCHANGED
+   - Does NOT set .orb width
+   - Does NOT set .orb height
+   - Does NOT set .orb position
+   - Does NOT set .orb top/right/left/bottom
+   - Keeps the existing circle geometry unchanged
    ========================================================= */
 
 
 /* =========================================================
-   MAIN CIRCLE COLOR / ATMOSPHERE
+   MAIN CIRCLE ATMOSPHERE
    ========================================================= */
 
 .orb{
   background:
     radial-gradient(
-      circle at 50% 48%,
-      rgba(217,255,98,.16) 0%,
-      rgba(110,145,70,.10) 18%,
-      rgba(48,67,40,.07) 34%,
-      rgba(12,18,14,.96) 63%,
+      circle at 50% 47%,
+      rgba(217,255,98,.15) 0%,
+      rgba(132,166,82,.10) 20%,
+      rgba(49,68,42,.075) 38%,
+      rgba(12,17,14,.92) 62%,
       #050708 100%
     );
 
-  border-color:rgba(217,255,98,.42);
+  border-color:rgba(217,255,98,.34);
 
   box-shadow:
-    0 0 18px rgba(217,255,98,.16),
-    0 0 45px rgba(217,255,98,.12),
-    0 0 90px rgba(217,255,98,.075),
-    0 0 145px rgba(217,255,98,.045),
-    inset 0 0 45px rgba(217,255,98,.075),
-    inset 0 0 100px rgba(0,0,0,.92);
+    0 0 18px rgba(217,255,98,.13),
+    0 0 42px rgba(217,255,98,.10),
+    0 0 85px rgba(217,255,98,.075),
+    0 0 140px rgba(217,255,98,.045),
+    inset 0 0 55px rgba(217,255,98,.055),
+    inset 0 0 110px rgba(0,0,0,.90);
 
   animation:nocturneOrbBreath 4.5s ease-in-out infinite;
 }
 
 
 /* =========================================================
-   INNER GREEN RING
+   INNER GLOW RING
    ========================================================= */
 
 .orb::before{
   content:"";
-
   position:absolute;
-
   inset:16px;
 
   border-radius:50%;
 
-  border:1px solid rgba(217,255,98,.34);
+  border:1px solid rgba(217,255,98,.30);
 
   background:
     radial-gradient(
       circle,
-      transparent 56%,
-      rgba(217,255,98,.018) 68%,
-      rgba(217,255,98,.045) 100%
+      transparent 54%,
+      rgba(217,255,98,.012) 68%,
+      rgba(217,255,98,.055) 100%
     );
 
   box-shadow:
-    0 0 8px rgba(217,255,98,.12),
-    0 0 18px rgba(217,255,98,.08),
-    inset 0 0 20px rgba(217,255,98,.035);
-
-  pointer-events:none;
-
-  z-index:0;
-}
-
-
-/* =========================================================
-   OUTER ROTATING GREEN RADAR RING
-   ========================================================= */
-
-.orb::after{
-  content:"";
-
-  position:absolute;
-
-  inset:-13px;
-
-  border-radius:50%;
-
-  border:1px dashed rgba(217,255,98,.38);
-
-  box-shadow:
-    0 0 8px rgba(217,255,98,.12),
-    0 0 22px rgba(217,255,98,.08);
+    0 0 8px rgba(217,255,98,.14),
+    0 0 20px rgba(217,255,98,.06),
+    inset 0 0 25px rgba(217,255,98,.035);
 
   pointer-events:none;
 
   z-index:1;
+}
+
+
+/* =========================================================
+   OUTER RADAR RING
+   ========================================================= */
+
+.orb::after{
+  content:"";
+  position:absolute;
+  inset:-12px;
+
+  border-radius:50%;
+
+  border:1px dashed rgba(217,255,98,.34);
+
+  box-shadow:
+    0 0 7px rgba(217,255,98,.12),
+    0 0 20px rgba(217,255,98,.075);
+
+  pointer-events:none;
+
+  z-index:2;
 
   animation:nocturneOrbRotate 18s linear infinite;
 }
 
 
 /* =========================================================
-   CONTENT
+   CONTENT LAYER
    ========================================================= */
 
 .orb > div{
@@ -582,7 +109,6 @@
   height:100%;
 
   display:flex;
-
   flex-direction:column;
 
   align-items:center;
@@ -595,7 +121,7 @@
 
 
 /* =========================================================
-   HORIZONTAL GREEN SCAN BEAM
+   HORIZONTAL SCAN LINE
    ========================================================= */
 
 .orb > div::before{
@@ -603,8 +129,8 @@
 
   position:absolute;
 
-  left:-90px;
-  right:-90px;
+  left:-80px;
+  right:-80px;
 
   top:50%;
 
@@ -614,27 +140,28 @@
     linear-gradient(
       90deg,
       transparent 0%,
-      rgba(217,255,98,0) 12%,
-      rgba(217,255,98,.10) 27%,
-      rgba(217,255,98,.75) 45%,
-      rgba(217,255,98,.95) 50%,
-      rgba(217,255,98,.75) 55%,
-      rgba(217,255,98,.10) 73%,
-      rgba(217,255,98,0) 88%,
+      transparent 15%,
+      rgba(217,255,98,.06) 28%,
+      rgba(217,255,98,.30) 40%,
+      rgba(217,255,98,.95) 49%,
+      rgba(217,255,98,.95) 51%,
+      rgba(217,255,98,.30) 60%,
+      rgba(217,255,98,.06) 72%,
+      transparent 85%,
       transparent 100%
     );
 
   box-shadow:
-    0 0 5px rgba(217,255,98,.55),
-    0 0 15px rgba(217,255,98,.28),
-    0 0 30px rgba(217,255,98,.12);
+    0 0 5px rgba(217,255,98,.70),
+    0 0 14px rgba(217,255,98,.35),
+    0 0 28px rgba(217,255,98,.12);
 
   pointer-events:none;
 }
 
 
 /* =========================================================
-   VERTICAL GREEN SCAN BEAM
+   VERTICAL SCAN LINE
    ========================================================= */
 
 .orb > div::after{
@@ -642,8 +169,8 @@
 
   position:absolute;
 
-  top:-90px;
-  bottom:-90px;
+  top:-80px;
+  bottom:-80px;
 
   left:50%;
 
@@ -653,27 +180,28 @@
     linear-gradient(
       180deg,
       transparent 0%,
-      rgba(217,255,98,0) 12%,
-      rgba(217,255,98,.10) 27%,
-      rgba(217,255,98,.75) 45%,
-      rgba(217,255,98,.95) 50%,
-      rgba(217,255,98,.75) 55%,
-      rgba(217,255,98,.10) 73%,
-      rgba(217,255,98,0) 88%,
+      transparent 15%,
+      rgba(217,255,98,.06) 28%,
+      rgba(217,255,98,.30) 40%,
+      rgba(217,255,98,.95) 49%,
+      rgba(217,255,98,.95) 51%,
+      rgba(217,255,98,.30) 60%,
+      rgba(217,255,98,.06) 72%,
+      transparent 85%,
       transparent 100%
     );
 
   box-shadow:
-    0 0 5px rgba(217,255,98,.55),
-    0 0 15px rgba(217,255,98,.25),
-    0 0 30px rgba(217,255,98,.10);
+    0 0 5px rgba(217,255,98,.70),
+    0 0 14px rgba(217,255,98,.35),
+    0 0 28px rgba(217,255,98,.12);
 
   pointer-events:none;
 }
 
 
 /* =========================================================
-   CASE ENGINE TEXT
+   CASE ENGINE
    ========================================================= */
 
 .orb span{
@@ -681,11 +209,13 @@
 
   font-family:"IBM Plex Mono","Courier New",monospace;
 
-  color:#b9c7b1;
+  color:#c0cbb8;
+
+  letter-spacing:.03em;
 
   text-shadow:
-    0 0 7px rgba(217,255,98,.18),
-    0 0 15px rgba(217,255,98,.08);
+    0 0 7px rgba(217,255,98,.20),
+    0 0 16px rgba(217,255,98,.08);
 }
 
 
@@ -700,9 +230,9 @@
 
   text-shadow:
     0 0 5px rgba(217,255,98,.95),
-    0 0 12px rgba(217,255,98,.75),
-    0 0 25px rgba(217,255,98,.50),
-    0 0 45px rgba(217,255,98,.20);
+    0 0 12px rgba(217,255,98,.78),
+    0 0 24px rgba(217,255,98,.55),
+    0 0 45px rgba(217,255,98,.25);
 
   animation:nocturneReadyPulse 2.8s ease-in-out infinite;
 }
@@ -713,15 +243,16 @@
    ========================================================= */
 
 .orb small{
-  color:#9eaf9b;
+  color:#aab9a5;
 
   text-shadow:
-    0 0 7px rgba(217,255,98,.14);
+    0 0 7px rgba(217,255,98,.16),
+    0 0 14px rgba(217,255,98,.06);
 }
 
 
 /* =========================================================
-   TOP GREEN RADAR NODE
+   RADAR NODE: TOP
    ========================================================= */
 
 .orb > div > span:first-child::before{
@@ -736,24 +267,23 @@
 
   background:#d9ff62;
 
-  box-shadow:
-    0 0 4px #d9ff62,
-    0 0 10px #d9ff62,
-    0 0 22px rgba(217,255,98,.80),
-    0 0 40px rgba(217,255,98,.35);
-
   left:50%;
+  top:-91px;
 
   transform:translateX(-50%);
 
-  top:-91px;
+  box-shadow:
+    0 0 4px #d9ff62,
+    0 0 10px #d9ff62,
+    0 0 20px rgba(217,255,98,.85),
+    0 0 38px rgba(217,255,98,.40);
 
   animation:nocturneNodePulse 2s ease-in-out infinite;
 }
 
 
 /* =========================================================
-   BOTTOM GREEN RADAR NODE
+   RADAR NODE: BOTTOM
    ========================================================= */
 
 .orb > div > span:first-child::after{
@@ -768,62 +298,22 @@
 
   background:#d9ff62;
 
+  left:50%;
+  bottom:-91px;
+
+  transform:translateX(-50%);
+
   box-shadow:
     0 0 4px #d9ff62,
     0 0 10px rgba(217,255,98,.85),
     0 0 20px rgba(217,255,98,.45);
-
-  left:50%;
-
-  transform:translateX(-50%);
-
-  bottom:-91px;
 
   animation:nocturneNodePulse 2s ease-in-out infinite reverse;
 }
 
 
 /* =========================================================
-   LARGE ATMOSPHERIC GREEN AURA
-   ========================================================= */
-
-#landing::after{
-  content:"";
-
-  position:absolute;
-
-  width:520px;
-  height:520px;
-
-  right:calc(2% - 95px);
-  top:50%;
-
-  transform:translateY(-50%);
-
-  border-radius:50%;
-
-  background:
-    radial-gradient(
-      circle,
-      rgba(217,255,98,.10) 0%,
-      rgba(217,255,98,.065) 22%,
-      rgba(217,255,98,.035) 42%,
-      rgba(217,255,98,.015) 58%,
-      transparent 73%
-    );
-
-  filter:blur(24px);
-
-  pointer-events:none;
-
-  z-index:0;
-
-  animation:nocturneOuterGlow 5s ease-in-out infinite;
-}
-
-
-/* =========================================================
-   SOFT GREEN LIGHT INSIDE LANDING AREA
+   ATMOSPHERIC GLOW BEHIND THE CIRCLE
    ========================================================= */
 
 #landing{
@@ -835,10 +325,10 @@
 
   position:absolute;
 
-  width:700px;
-  height:700px;
+  width:620px;
+  height:620px;
 
-  right:calc(2% - 185px);
+  right:calc(2% - 145px);
   top:50%;
 
   transform:translateY(-50%);
@@ -848,21 +338,76 @@
   background:
     radial-gradient(
       circle,
-      rgba(217,255,98,.035) 0%,
-      rgba(217,255,98,.018) 35%,
-      transparent 68%
+      rgba(217,255,98,.075) 0%,
+      rgba(217,255,98,.045) 22%,
+      rgba(217,255,98,.022) 43%,
+      rgba(217,255,98,.008) 60%,
+      transparent 74%
     );
 
-  filter:blur(20px);
+  filter:blur(18px);
+
+  opacity:.90;
 
   pointer-events:none;
 
   z-index:0;
+
+  animation:nocturneAtmosphere 5s ease-in-out infinite;
 }
 
 
 /* =========================================================
-   BREATHING CIRCLE
+   SECOND SOFT HALO
+   ========================================================= */
+
+#landing::after{
+  content:"";
+
+  position:absolute;
+
+  width:430px;
+  height:430px;
+
+  right:calc(2% - 50px);
+  top:50%;
+
+  transform:translateY(-50%);
+
+  border-radius:50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(217,255,98,.085) 0%,
+      rgba(217,255,98,.045) 32%,
+      rgba(217,255,98,.018) 52%,
+      transparent 72%
+    );
+
+  filter:blur(13px);
+
+  opacity:.75;
+
+  pointer-events:none;
+
+  z-index:0;
+
+  animation:nocturneOuterGlow 5s ease-in-out infinite;
+}
+
+
+/* =========================================================
+   KEEP THE REAL ORB ABOVE THE ATMOSPHERE
+   ========================================================= */
+
+#landing .orb{
+  z-index:2;
+}
+
+
+/* =========================================================
+   ANIMATIONS
    ========================================================= */
 
 @keyframes nocturneOrbBreath{
@@ -870,30 +415,39 @@
   0%,
   100%{
     box-shadow:
-      0 0 18px rgba(217,255,98,.13),
-      0 0 45px rgba(217,255,98,.09),
-      0 0 90px rgba(217,255,98,.055),
-      0 0 145px rgba(217,255,98,.025),
-      inset 0 0 45px rgba(217,255,98,.06),
-      inset 0 0 100px rgba(0,0,0,.92);
+      0 0 18px rgba(217,255,98,.12),
+      0 0 42px rgba(217,255,98,.08),
+      0 0 85px rgba(217,255,98,.055),
+      0 0 140px rgba(217,255,98,.025),
+      inset 0 0 55px rgba(217,255,98,.045),
+      inset 0 0 110px rgba(0,0,0,.92);
   }
 
   50%{
     box-shadow:
       0 0 25px rgba(217,255,98,.23),
-      0 0 60px rgba(217,255,98,.15),
-      0 0 115px rgba(217,255,98,.09),
-      0 0 175px rgba(217,255,98,.045),
-      inset 0 0 55px rgba(217,255,98,.10),
-      inset 0 0 100px rgba(0,0,0,.88);
+      0 0 58px rgba(217,255,98,.15),
+      0 0 110px rgba(217,255,98,.09),
+      0 0 170px rgba(217,255,98,.045),
+      inset 0 0 65px rgba(217,255,98,.085),
+      inset 0 0 110px rgba(0,0,0,.88);
   }
 
 }
 
 
-/* =========================================================
-   READY PULSE
-   ========================================================= */
+@keyframes nocturneOrbRotate{
+
+  from{
+    transform:rotate(0deg);
+  }
+
+  to{
+    transform:rotate(360deg);
+  }
+
+}
+
 
 @keyframes nocturneReadyPulse{
 
@@ -921,27 +475,6 @@
 }
 
 
-/* =========================================================
-   RADAR ROTATION
-   ========================================================= */
-
-@keyframes nocturneOrbRotate{
-
-  from{
-    transform:rotate(0deg);
-  }
-
-  to{
-    transform:rotate(360deg);
-  }
-
-}
-
-
-/* =========================================================
-   NODE PULSE
-   ========================================================= */
-
 @keyframes nocturneNodePulse{
 
   0%,
@@ -964,15 +497,11 @@
 }
 
 
-/* =========================================================
-   OUTER ATMOSPHERE
-   ========================================================= */
-
-@keyframes nocturneOuterGlow{
+@keyframes nocturneAtmosphere{
 
   0%,
   100%{
-    opacity:.45;
+    opacity:.60;
   }
 
   50%{
@@ -982,9 +511,23 @@
 }
 
 
+@keyframes nocturneOuterGlow{
+
+  0%,
+  100%{
+    opacity:.50;
+  }
+
+  50%{
+    opacity:.95;
+  }
+
+}
+
+
 /* =========================================================
-   MOBILE
-   SIZE AND POSITION STILL LEFT TO YOUR EXISTING CSS
+   MOBILE EFFECTS
+   Geometry remains controlled by your existing CSS
    ========================================================= */
 
 @media(max-width:720px){
@@ -1015,24 +558,24 @@
     bottom:-65px;
   }
 
-  #landing::after{
-    width:300px;
-    height:300px;
-
-    right:50%;
-    top:auto;
-    bottom:10px;
-
-    transform:translateX(50%);
-  }
-
   #landing::before{
     width:400px;
     height:400px;
 
     right:50%;
     top:auto;
-    bottom:-30px;
+    bottom:-35px;
+
+    transform:translateX(50%);
+  }
+
+  #landing::after{
+    width:290px;
+    height:290px;
+
+    right:50%;
+    top:auto;
+    bottom:10px;
 
     transform:translateX(50%);
   }
