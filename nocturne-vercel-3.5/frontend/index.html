@@ -1,565 +1,1155 @@
-require("dotenv").config();
-
-const path=require("path");
-const express=require("express");
-const http=require("http");
-const {Server}=require("socket.io");
-const {GameRoom}=require("./game");
-
-const app=express();
-const server=http.createServer(app);
-
-const allowedOrigins=(process.env.FRONTEND_URL||"")
-  .split(",")
-  .map(x=>x.trim())
-  .filter(Boolean);
-
-const io=new Server(server,{
-  cors:{
-    origin:(origin,cb)=>{
-      if(
-        !origin ||
-        allowedOrigins.length===0 ||
-        allowedOrigins.includes(origin)
-      ){
-        return cb(null,true);
-      }
-
-      cb(new Error("Origin not allowed"));
-    },
-    credentials:false
-  },
-
-  maxHttpBufferSize:1e6
-});
-
-const PORT=Number(process.env.PORT||3000);
-const rooms=new Map();
-
-const ROOM_ALPHABET="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-const clean=(v,n)=>
-  String(v??"")
-    .replace(/[\u0000-\u001F\u007F]/g,"")
-    .trim()
-    .slice(0,n);
-
-const validName=name=>/^[^<>]{1,24}$/.test(name);
-const validRoomCode=code=>/^[A-Z2-9]{4}$/.test(code);
-
-app.disable("x-powered-by");
-
-app.use(
-  express.static(
-    path.join(__dirname,"..","public"),
-    {
-      etag:true,
-      maxAge:
-        process.env.NODE_ENV==="production"
-          ?"1h"
-          :0
-    }
-  )
-);
-
-app.get("/health",(req,res)=>
-  res.json({
-    ok:true,
-    service:"nocturne",
-    version:"4.0.0",
-    rooms:rooms.size
-  })
-);
-
-function roomCode(){
-  let c;
-
-  do{
-    c=Array.from(
-      {length:4},
-      ()=>ROOM_ALPHABET[
-        Math.floor(
-          Math.random()*ROOM_ALPHABET.length
-        )
-      ]
-    ).join("");
-  }while(rooms.has(c));
-
-  return c;
-}
-
-function findRoom(socket){
-  for(const room of rooms.values()){
-    if(room.players.has(socket.id)){
-      return room;
-    }
-  }
-
-  return null;
-}
-
-function fail(socket,message){
-  socket.emit("errorMessage",message);
-}
-
-io.on("connection",socket=>{
-
-  /* ============================================================
-     MULTIPLAYER
-     ============================================================ */
-
-  socket.on("createRoom",payload=>{
-
-    const name=clean(
-      payload?.name,
-      24
-    );
-
-    if(!validName(name)){
-      return fail(
-        socket,
-        "Choose a name between 1 and 24 characters."
-      );
-    }
-
-    const code=roomCode();
-
-    const room=new GameRoom(
-      code,
-      io
-    );
-
-    rooms.set(
-      code,
-      room
-    );
-
-    room.addPlayer(
-      socket,
-      name
-    );
-  });
-
-
-  socket.on("joinRoom",payload=>{
-
-    const code=clean(
-      payload?.code,
-      4
-    ).toUpperCase();
-
-    const name=clean(
-      payload?.name,
-      24
-    );
-
-    if(!validRoomCode(code)){
-      return fail(
-        socket,
-        "Enter a valid 4-character room code."
-      );
-    }
-
-    if(!validName(name)){
-      return fail(
-        socket,
-        "Choose a name between 1 and 24 characters."
-      );
-    }
-
-    const room=rooms.get(code);
-
-    if(!room){
-      return fail(
-        socket,
-        "Room not found."
-      );
-    }
-
-    if(room.started){
-      return fail(
-        socket,
-        "Case already started."
-      );
-    }
-
-    if(room.players.size>=8){
-      return fail(
-        socket,
-        "Room full."
-      );
-    }
-
-    room.addPlayer(
-      socket,
-      name
-    );
-  });
-
-
-  socket.on("launchCase",async()=>{
-
-    const room=findRoom(socket);
-
-    if(!room){
-      return fail(
-        socket,
-        "You are not in a case room."
-      );
-    }
-
-    if(room.mode==="SINGLE_PLAYER"){
-      return fail(
-        socket,
-        "Single-player cases start automatically."
-      );
-    }
-
-    if(room.hostId!==socket.id){
-      return fail(
-        socket,
-        "Only the case host can start the case."
-      );
-    }
-
-    if(room.players.size<2){
-      return fail(
-        socket,
-        "At least 2 players are required."
-      );
-    }
-
-    try{
-
-      await room.start();
-
-    }catch(error){
-
-      console.error(
-        "[NOCTURNE] Multiplayer start error:",
-        error
-      );
-
-      fail(
-        socket,
-        "Unable to start the multiplayer case."
-      );
-    }
-  });
-
-
-  /* ============================================================
-     SINGLE PLAYER
-
-     IMPORTANT:
-     GameRoom.startSinglePlayer() expects:
-
-       startSinglePlayer(socket,{
-         name,
-         requestedInvestigatorRole,
-         difficulty
-       })
-
-     The previous index.js passed only the options object,
-     which caused the solo case to fail.
-     ============================================================ */
-
-  socket.on("createSinglePlayer",async payload=>{
-
-    const name=clean(
-      payload?.name,
-      24
-    );
-
-    if(!validName(name)){
-      return fail(
-        socket,
-        "Choose a name between 1 and 24 characters."
-      );
-    }
-
-    const investigatorRole=clean(
-      payload?.investigatorRole,
-      60
-    );
-
-    const difficulty=clean(
-      payload?.difficulty,
-      30
-    ).toUpperCase();
-
-    const code=roomCode();
-
-    const room=new GameRoom(
-      code,
-      io
-    );
-
-    room.mode="SINGLE_PLAYER";
-    room.singlePlayer=true;
-
-    rooms.set(
-      code,
-      room
-    );
-
-    try{
-
-      /*
-       * DO NOT call room.addPlayer() here.
-       *
-       * startSinglePlayer() itself creates and registers
-       * the human player, joins the Socket.IO room and
-       * starts the simulation.
-       */
-
-      if(
-        typeof room.startSinglePlayer!=="function"
-      ){
-
-        rooms.delete(code);
-
-        return fail(
-          socket,
-          "Single-player mode is not available in this server build yet."
-        );
-      }
-
-      await room.startSinglePlayer(
-        socket,
-        {
-          name,
-          requestedInvestigatorRole:
-            investigatorRole,
-          difficulty
-        }
-      );
-
-    }catch(error){
-
-      console.error(
-        "[NOCTURNE] Single-player start error:",
-        error
-      );
-
-      rooms.delete(code);
-
-      fail(
-        socket,
-        "Unable to start the single-player case."
-      );
-    }
-  });
-
-
-  /* ============================================================
-     GAME ACTIONS
-     ============================================================ */
-
-  socket.on("playerAction",async payload=>{
-
-    const room=findRoom(socket);
-
-    if(room){
-
-      await room.action(
-        socket.id,
-        clean(
-          payload?.action,
-          600
-        )
-      );
-
-    }else{
-
-      fail(
-        socket,
-        "You are not in a case room."
-      );
-    }
-  });
-
-
-  socket.on("killerDecision",()=>{
-
-    const room=findRoom(socket);
-
-    if(room){
-      room.killerDecision(
-        socket.id
-      );
-    }
-  });
-
-
-  socket.on("investigate",payload=>{
-
-    const room=findRoom(socket);
-
-    if(room){
-
-      room.investigate(
-        socket.id,
-        {
-          target:clean(
-            payload?.target,
-            180
-          ),
-
-          mode:payload?.mode,
-
-          question:clean(
-            payload?.question,
-            400
-          )
-        }
-      );
-    }
-  });
-
-
-  socket.on("askQuestion",payload=>{
-
-    const room=findRoom(socket);
-
-    if(room){
-
-      room.ask(
-        socket.id,
-        {
-          targetId:clean(
-            payload?.targetId,
-            100
-          ),
-
-          question:clean(
-            payload?.question,
-            400
-          )
-        }
-      );
-    }
-  });
-
-
-  socket.on("answerQuestion",payload=>{
-
-    const room=findRoom(socket);
-
-    if(room){
-
-      room.answer(
-        socket.id,
-        {
-          questionId:clean(
-            payload?.questionId,
-            100
-          ),
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 
-          answer:clean(
-            payload?.answer,
-            700
-          )
-        }
-      );
-    }
-  });
-
-
-  socket.on("accuse",payload=>{
-
-    const room=findRoom(socket);
-
-    if(room){
-
-      room.accuse(
-        socket.id,
-        clean(
-          payload?.targetId,
-          100
-        )
-      );
-    }
-  });
-
-
-  socket.on("requestVisual",async payload=>{
-
-    const room=findRoom(socket);
-
-    if(room){
-
-      await room.visual(
-        socket.id,
-        {
-          type:payload?.type,
-
-          cameraId:clean(
-            payload?.cameraId,
-            30
-          )
-        }
-      );
-    }
-  });
-
-
-  socket.on("chat",payload=>{
-
-    const room=findRoom(socket);
-
-    if(room){
-
-      room.chat(
-        socket.id,
-        clean(
-          payload?.text,
-          800
-        )
-      );
-    }
-  });
-
-
-  /* ============================================================
-     DISCONNECT
-     ============================================================ */
-
-  socket.on("disconnect",()=>{
-
-    const room=findRoom(socket);
-
-    if(!room){
-      return;
-    }
-
-    room.remove(
-      socket.id
-    );
-
-    /*
-     * Remove empty rooms.
-     */
-    if(room.players.size===0){
-
-      rooms.delete(
-        room.code
-      );
-    }
-  });
-
-});
-
-
-/* ==============================================================
-   SERVER
-   ============================================================== */
-
-server.listen(
-  PORT,
-  ()=>{
-    console.log(
-      `NOCTURNE 4.0 online server listening on port ${PORT}`
-    );
-  }
-);
+<meta name="theme-color" content="#080a0d">
+<meta name="description" content="NOCTURNE 4.0, a living multiplayer and single-player murder mystery created and owned by Kavish Koradia.">
+<meta name="author" content="Kavish Koradia">
+<meta name="copyright" content="© 2026 Kavish Koradia">
+<meta name="application-name" content="NOCTURNE">
+
+<meta property="og:title" content="NOCTURNE 4.0 // Living Mystery">
+<meta property="og:description" content="A living multiplayer and single-player murder mystery created by Kavish Koradia.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nocturne-dun-xi.vercel.app">
+
+<link rel="canonical" href="https://nocturne-dun-xi.vercel.app">
+
+<title>NOCTURNE 4.0 // Living Mystery · Kavish Koradia</title>
+
+<link rel="stylesheet" href="/styles.css">
+</head>
+
+<body>
+
+<header>
+  <div class="brand">
+    <b>NOCTURNE</b>
+    <span>LIVE CASE ENGINE · 4.0</span>
+    <small class="creatorMark">CREATED BY KAVISH KORADIA</small>
+  </div>
+
+  <div class="headerRight">
+    <button class="aboutBtn" onclick="openAbout()">
+      ABOUT / CREDITS
+    </button>
+
+    <div class="connection" id="connection">
+      <span class="dot"></span>
+      <i id="conn">CONNECTING</i>
+    </div>
+  </div>
+</header>
+
+
+<div id="toast" aria-live="polite"></div>
+
+
+<div id="busy" class="hide">
+  <div class="busyCard">
+    <div class="spinner"></div>
+    <b id="busyText">Working…</b>
+    <small>Please wait</small>
+  </div>
+</div>
+
+
+<main>
+
+<!-- =========================================================
+     LANDING
+     ========================================================= -->
+
+<section id="landing">
+
+  <div class="hero">
+
+    <small>PROCEDURAL · MULTIPLAYER · SINGLE PLAYER · AI-ENHANCED</small>
+
+    <h1>
+      Every crime<br>
+      <em>leaves a different shadow.</em>
+    </h1>
+
+    <p>
+      A living social deduction mystery where the world keeps moving.
+      Play with friends against a human Killer, or enter a fully
+      simulated case where the Killer is an autonomous AI character.
+    </p>
+
+
+    <div class="heroBtns">
+
+      <button
+        class="primary big"
+        onclick="openSetup('create')"
+      >
+        ＋ CREATE CASE
+      </button>
+
+      <button
+        class="secondary big"
+        onclick="openSetup('join')"
+      >
+        ↪ JOIN CASE
+      </button>
+
+      <button
+        class="secondary big singlePlayerBtn"
+        onclick="openSetup('single')"
+      >
+        ◉ SINGLE PLAYER
+      </button>
+
+    </div>
+
+
+    <div class="chips">
+      <span>♾ Fresh cases</span>
+      <span>◉ Autonomous NPCs</span>
+      <span>▣ Visual evidence</span>
+      <span>⌁ Causal clues</span>
+      <span>◆ AI Killer</span>
+    </div>
+
+  </div>
+
+
+  <div class="orb">
+    <div>
+      <span>CASE ENGINE</span>
+      <b>READY</b>
+      <small>2–8 PLAYERS · SOLO</small>
+    </div>
+  </div>
+
+</section>
+
+
+<!-- =========================================================
+     MULTIPLAYER LOBBY
+     ========================================================= -->
+
+<section id="lobby" class="hide">
+
+  <div class="head">
+
+    <div>
+      <small>WAITING ROOM</small>
+
+      <h2>CASE LOBBY</h2>
+
+      <p class="sub">
+        Invite friends with the room code.
+        The host starts when everyone is ready.
+      </p>
+    </div>
+
+
+    <div class="roomCode">
+
+      <small>ROOM CODE</small>
+
+      <button
+        class="code"
+        id="code"
+        onclick="copyCode()"
+        title="Copy room code"
+      >
+        ----
+      </button>
+
+      <span>Tap to copy</span>
+
+    </div>
+
+  </div>
+
+
+  <div class="cols">
+
+    <div class="panel">
+
+      <div class="panelTitle">
+        <h3>PLAYERS</h3>
+        <span id="playerCount">0 / 8</span>
+      </div>
+
+      <div id="players"></div>
+
+
+      <div class="panelFooter">
+
+        <button
+          id="launch"
+          class="primary wide"
+          onclick="launchCase()"
+        >
+          GENERATE CASE &amp; START
+        </button>
+
+        <p id="launchHint">
+          At least 2 players are required.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <div class="panel guide">
+
+      <h3>WHAT HAPPENS NEXT</h3>
+
+      <div class="step">
+        <b>01</b>
+        <p>
+          <strong>Secret roles</strong><br>
+          One human becomes the Killer. Roles are private.
+        </p>
+      </div>
+
+      <div class="step">
+        <b>02</b>
+        <p>
+          <strong>A living world</strong><br>
+          NPCs move, remember, react and form suspicions.
+        </p>
+      </div>
+
+      <div class="step">
+        <b>03</b>
+        <p>
+          <strong>Investigate</strong><br>
+          Cross-check testimony, movement, traces and visual evidence.
+        </p>
+      </div>
+
+      <div class="step">
+        <b>04</b>
+        <p>
+          <strong>Accuse carefully</strong><br>
+          A wrong accusation helps the real Killer stay hidden.
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =========================================================
+     SINGLE PLAYER SETUP
+     ========================================================= -->
+
+<section id="singleSetup" class="hide">
+
+  <div class="head">
+
+    <div>
+      <small>SOLO INVESTIGATION</small>
+
+      <h2>SINGLE PLAYER CASE</h2>
+
+      <p class="sub">
+        You are the investigator. Every other character is controlled
+        by the living simulation, including the Killer.
+      </p>
+    </div>
+
+  </div>
+
+
+  <div class="singleSetupGrid">
+
+    <div class="panel">
+
+      <div class="panelTitle">
+        <h3>YOUR INVESTIGATOR</h3>
+        <span>HUMAN</span>
+      </div>
+
+
+      <label>
+        PLAYER NAME
+
+        <input
+          id="singleNameInput"
+          maxlength="24"
+          autocomplete="nickname"
+          placeholder="Your name"
+        >
+      </label>
+
+
+      <label>
+        INVESTIGATOR SPECIALTY
+
+        <select id="singleRoleInput">
+
+          <option value="Lead Detective">
+            Lead Detective
+          </option>
+
+          <option value="Forensic Analyst">
+            Forensic Analyst
+          </option>
+
+          <option value="Behavioral Analyst">
+            Behavioral Analyst
+          </option>
+
+          <option value="Digital Investigator">
+            Digital Investigator
+          </option>
+
+          <option value="Field Investigator">
+            Field Investigator
+          </option>
+
+          <option value="Investigative Journalist">
+            Investigative Journalist
+          </option>
+
+          <option value="Security Specialist">
+            Security Specialist
+          </option>
+
+          <option value="Medical Consultant">
+            Medical Consultant
+          </option>
+
+        </select>
+      </label>
+
+
+      <label>
+        DIFFICULTY
+
+        <select id="difficultyInput">
+
+          <option value="CASUAL">
+            CASUAL
+          </option>
+
+          <option value="DETECTIVE" selected>
+            DETECTIVE
+          </option>
+
+          <option value="EXPERT">
+            EXPERT
+          </option>
+
+          <option value="NOCTURNE">
+            NOCTURNE
+          </option>
+
+        </select>
+      </label>
+
+
+      <button
+        class="primary wide"
+        onclick="startSinglePlayer()"
+      >
+        ◉ ENTER SINGLE PLAYER CASE
+      </button>
+
+
+      <p class="modalHint">
+        The Killer is an autonomous NPC.
+        You will never be told who they are at the beginning.
+      </p>
+
+    </div>
+
+
+    <div class="panel guide">
+
+      <h3>THE SOLO EXPERIENCE</h3>
+
+
+      <div class="step">
+        <b>01</b>
+        <p>
+          <strong>You are the investigator</strong><br>
+          Choose your specialty and approach the case your way.
+        </p>
+      </div>
+
+
+      <div class="step">
+        <b>02</b>
+        <p>
+          <strong>The world thinks for itself</strong><br>
+          NPCs have memories, goals, relationships, secrets and pressure.
+        </p>
+      </div>
+
+
+      <div class="step">
+        <b>03</b>
+        <p>
+          <strong>The Killer is alive</strong><br>
+          The Killer NPC has their own motive, memories,
+          suspicions and self-preservation instincts.
+        </p>
+      </div>
+
+
+      <div class="step">
+        <b>04</b>
+        <p>
+          <strong>No fixed answer path</strong><br>
+          Evidence emerges from what characters actually do,
+          remember and reveal.
+        </p>
+      </div>
+
+
+      <div class="difficultyInfo">
+
+        <div>
+          <strong>CASUAL</strong>
+          <span>More forgiving investigation.</span>
+        </div>
+
+        <div>
+          <strong>DETECTIVE</strong>
+          <span>Balanced investigation.</span>
+        </div>
+
+        <div>
+          <strong>EXPERT</strong>
+          <span>Sharper NPC behavior and fewer easy openings.</span>
+        </div>
+
+        <div>
+          <strong>NOCTURNE</strong>
+          <span>The simulation gives you very little for free.</span>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =========================================================
+     LIVE GAME
+     ========================================================= -->
+
+<section id="game" class="hide">
+
+  <div class="casebar">
+
+    <div>
+      <small id="case"></small>
+      <h2 id="world"></h2>
+      <p id="phaseHelp" class="sub"></p>
+    </div>
+
+
+    <div class="stats">
+
+      <div>
+        <small>TIME</small>
+        <b id="clock">--:--</b>
+      </div>
+
+      <div>
+        <small>PHASE</small>
+        <b id="phase">SETUP</b>
+      </div>
+
+      <div id="modeStat">
+        <small>MODE</small>
+        <b id="mode">MULTIPLAYER</b>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div class="mobileRole">
+
+    <span id="roleMini">
+      ROLE: UNKNOWN
+    </span>
+
+    <button onclick="toggleSide()">
+      CASE INFO
+    </button>
+
+  </div>
+
+
+  <div class="grid">
+
+    <aside id="leftSide">
+
+      <div class="panel role">
+
+        <h3>YOUR PRIVATE ROLE</h3>
+
+        <strong id="role">
+          UNKNOWN
+        </strong>
+
+        <p id="objective"></p>
+
+        <div id="killerControl"></div>
+
+        <div id="memory"></div>
+
+      </div>
+
+
+      <div class="panel">
+
+        <div class="panelTitle">
+          <h3>PEOPLE</h3>
+          <span id="aliveCount"></span>
+        </div>
+
+        <div id="people" class="scrollList"></div>
+
+      </div>
+
+
+      <div class="panel">
+
+        <h3>LOCATIONS</h3>
+
+        <div id="locations" class="scrollList"></div>
+
+      </div>
+
+    </aside>
+
+
+    <article>
+
+      <div class="panel feed">
+
+        <div class="panelTitle">
+
+          <h3>CASE FEED</h3>
+
+          <button
+            class="tiny"
+            onclick="scrollFeed()"
+          >
+            LATEST ↓
+          </button>
+
+          <span id="eventCount"></span>
+
+        </div>
+
+        <div id="events"></div>
+
+      </div>
+
+
+      <div class="panel actions">
+
+        <nav id="tabs">
+
+          <button
+            data-tab="act"
+            onclick="tab('act')"
+            class="active"
+          >
+            ACT
+          </button>
+
+
+          <button
+            data-tab="invest"
+            onclick="tab('invest')"
+          >
+            INVESTIGATE
+          </button>
+
+
+          <button
+            data-tab="evidence"
+            onclick="tab('evidence')"
+          >
+            EVIDENCE
+            <span id="evCount"></span>
+          </button>
+
+
+          <button
+            data-tab="question"
+            onclick="tab('question')"
+          >
+            CALL / QUESTION
+          </button>
+
+
+          <button
+            data-tab="visual"
+            onclick="tab('visual')"
+          >
+            VISUAL EVIDENCE
+          </button>
+
+
+          <button
+            data-tab="accuse"
+            onclick="tab('accuse')"
+          >
+            ACCUSE
+          </button>
+
+        </nav>
+
+
+        <div id="act"></div>
+
+        <div id="invest" class="hide"></div>
+
+        <div id="evidence" class="hide"></div>
+
+        <div id="question" class="hide"></div>
+
+        <div id="visual" class="hide"></div>
+
+        <div id="accuse" class="hide"></div>
+
+      </div>
+
+    </article>
+
+
+    <aside id="rightSide">
+
+      <div class="panel chat">
+
+        <div class="panelTitle">
+
+          <h3>PUBLIC COMMS</h3>
+
+          <span>ALL PLAYERS</span>
+
+        </div>
+
+
+        <div id="chat">
+
+          <div class="systemMsg">
+            Messages here are public.
+            Your role and private objective are not.
+          </div>
+
+        </div>
+
+
+        <form onsubmit="sendChat(event)">
+
+          <input
+            id="chatin"
+            maxlength="800"
+            autocomplete="off"
+            placeholder="Message the group…"
+          >
+
+          <button aria-label="Send message">
+            ↑
+          </button>
+
+        </form>
+
+      </div>
+
+
+      <div class="panel tips">
+
+        <h3>INVESTIGATION TIP</h3>
+
+        <p id="tip">
+          A clue is strongest when it agrees with an independent source.
+        </p>
+
+      </div>
+
+    </aside>
+
+  </div>
+
+</section>
+
+</main>
+
+
+<!-- =========================================================
+     FOOTER
+     ========================================================= -->
+
+<footer class="siteFooter">
+
+  <div class="footerBrand">
+
+    <strong>NOCTURNE</strong>
+
+    <span>
+      Created &amp; Owned by <b>Kavish Koradia</b>
+    </span>
+
+  </div>
+
+
+  <div class="footerLinks">
+
+    <button onclick="openAbout()">
+      ABOUT / CREDITS
+    </button>
+
+    <span>
+      VERSION 4.0
+    </span>
+
+    <small>
+      © 2026 Kavish Koradia. All rights reserved.
+    </small>
+
+  </div>
+
+</footer>
+
+
+<!-- =========================================================
+     ABOUT / CREDITS
+     ========================================================= -->
+
+<div
+  id="aboutModal"
+  class="modal aboutModal hide"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="aboutTitle"
+>
+
+  <div class="aboutCard">
+
+    <button
+      class="modalClose"
+      onclick="closeAbout()"
+      aria-label="Close"
+    >
+      ×
+    </button>
+
+
+    <div class="aboutHero">
+
+      <small>
+        NOCTURNE // CREATOR &amp; OWNER
+      </small>
+
+      <h2 id="aboutTitle">
+        The Living Mystery Engine
+      </h2>
+
+      <p>
+        A procedural multiplayer and single-player murder mystery
+        where every case unfolds through people, places, decisions,
+        memories and imperfect evidence.
+      </p>
+
+    </div>
+
+
+    <div class="aboutGrid">
+
+
+      <div class="aboutPanel versionPanel">
+
+        <small>
+          VERSION / OWNERSHIP
+        </small>
+
+        <strong>
+          NOCTURNE 4.0
+        </strong>
+
+        <span>
+          Created &amp; Owned by
+        </span>
+
+        <b>
+          Kavish Koradia
+        </b>
+
+        <em>
+          © 2026 Kavish Koradia.
+          All rights reserved.
+        </em>
+
+      </div>
+
+
+      <div class="aboutPanel">
+
+        <small>
+          PROJECT
+        </small>
+
+        <h3>
+          NOCTURNE
+        </h3>
+
+        <p>
+          Living Multiplayer &amp; Single-Player Murder Mystery
+        </p>
+
+        <p>
+          Procedural cases · Autonomous NPCs ·
+          Multiplayer investigation · Solo investigation ·
+          Visual evidence
+        </p>
+
+      </div>
+
+
+      <div class="aboutPanel">
+
+        <small>
+          CREATOR
+        </small>
+
+        <h3>
+          Kavish Koradia
+        </h3>
+
+        <p>
+          Creator, owner and developer of NOCTURNE.
+        </p>
+
+      </div>
+
+
+      <div class="aboutPanel">
+
+        <small>
+          CREATIVE &amp; TECHNICAL WORK
+        </small>
+
+        <ul>
+
+          <li>
+            Concept &amp; game design
+          </li>
+
+          <li>
+            Procedural case engine
+          </li>
+
+          <li>
+            NPC memory, personality and behavior systems
+          </li>
+
+          <li>
+            Autonomous AI Killer system
+          </li>
+
+          <li>
+            Multiplayer room and investigation systems
+          </li>
+
+          <li>
+            Single-player investigation mode
+          </li>
+
+          <li>
+            Evidence, testimony and visual-evidence systems
+          </li>
+
+          <li>
+            Web interface and player experience
+          </li>
+
+        </ul>
+
+      </div>
+
+
+      <div class="aboutPanel">
+
+        <small>
+          OWNERSHIP
+        </small>
+
+        <h3>
+          ORIGINAL PROJECT
+        </h3>
+
+        <p>
+          NOCTURNE is an original project created,
+          developed and owned by Kavish Koradia.
+        </p>
+
+        <p>
+          © 2026 Kavish Koradia.
+          All rights reserved.
+        </p>
+
+      </div>
+
+
+      <div class="aboutPanel">
+
+        <small>
+          TECHNOLOGY
+        </small>
+
+        <h3>
+          LIVE ARCHITECTURE
+        </h3>
+
+        <p>
+          Browser-based frontend connected to a
+          persistent Node.js / Socket.IO game server.
+        </p>
+
+        <p>
+          Multiplayer supports 2–8 human players.
+          Single player places one human investigator
+          inside the same simulation engine with
+          autonomous NPC characters.
+        </p>
+
+      </div>
+
+
+      <div class="aboutPanel">
+
+        <small>
+          SINGLE PLAYER
+        </small>
+
+        <h3>
+          AUTONOMOUS KILLER
+        </h3>
+
+        <p>
+          In solo mode the Killer is an AI-controlled
+          NPC with a private motive, memories, pressure,
+          relationships, suspicion and self-preservation.
+        </p>
+
+        <p>
+          The player remains the investigator.
+          The hidden truth stays authoritative on the server.
+        </p>
+
+      </div>
+
+
+      <div class="aboutPanel">
+
+        <small>
+          CASE PHILOSOPHY
+        </small>
+
+        <h3>
+          NO FIXED SCRIPT
+        </h3>
+
+        <p>
+          Cases are generated from a living simulation.
+          Characters can move, remember, cooperate,
+          lie, deflect, panic, investigate and change
+          their behavior as the case develops.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <div class="aboutCopyright">
+
+      <span>
+        NOCTURNE is an original project created and owned by Kavish Koradia.
+      </span>
+
+      <span>
+        © 2026 Kavish Koradia
+      </span>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =========================================================
+     LIVE QUESTION MODAL
+     ========================================================= -->
+
+<div
+  id="questionModal"
+  class="modal hide"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="qTitle"
+>
+
+  <div class="modalCard">
+
+    <button
+      class="modalClose"
+      onclick="closeQuestion()"
+      aria-label="Close"
+    >
+      ×
+    </button>
+
+
+    <small>
+      LIVE INTERVIEW
+    </small>
+
+    <h2 id="qTitle">
+      Incoming question
+    </h2>
+
+    <p id="qFrom"></p>
+
+
+    <div
+      class="questionBox"
+      id="qText"
+    ></div>
+
+
+    <label>
+      YOUR ANSWER
+
+      <textarea
+        id="answerInput"
+        maxlength="700"
+        placeholder="Answer in your own words. You control what your character says."
+      ></textarea>
+
+    </label>
+
+
+    <button
+      class="primary wide"
+      onclick="answerQuestion()"
+    >
+      SEND ANSWER
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- =========================================================
+     CASE SETUP MODAL
+     ========================================================= -->
+
+<div
+  id="modal"
+  class="modal hide"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="modalTitle"
+>
+
+  <div class="modalCard">
+
+    <button
+      class="modalClose"
+      onclick="closeModal()"
+      aria-label="Close"
+    >
+      ×
+    </button>
+
+
+    <small>
+      NOCTURNE SETUP
+    </small>
+
+
+    <h2 id="modalTitle">
+      Create a new case
+    </h2>
+
+
+    <p id="modalText"></p>
+
+
+    <label>
+      PLAYER NAME
+
+      <input
+        id="nameInput"
+        maxlength="24"
+        autocomplete="nickname"
+        placeholder="Your name"
+      >
+    </label>
+
+
+    <label
+      id="codeLabel"
+      class="hide"
+    >
+      ROOM CODE
+
+      <input
+        id="codeInput"
+        maxlength="4"
+        autocomplete="off"
+        placeholder="ABCD"
+      >
+    </label>
+
+
+    <button
+      id="modalGo"
+      class="primary wide"
+      onclick="submitSetup()"
+    >
+      CREATE ROOM
+    </button>
+
+
+    <p class="modalHint">
+      Multiplayer supports 2–8 players.
+      One human is secretly selected as Killer when the case starts.
+    </p>
+
+  </div>
+
+</div>
+
+
+<!-- =========================================================
+     SCRIPTS
+     IMPORTANT: Socket.IO MUST LOAD BEFORE app.js
+     ========================================================= -->
+
+<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.8.1/dist/socket.io.min.js"></script>
+<script src="/config.js"></script>
+<script src="/app.js"></script>
+
+</body>
+</html>
