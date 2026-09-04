@@ -1,5 +1,14 @@
-NOCTURNE 3.5
+NOCTURNE 4.0
 Created & Owned by Kavish Koradia
 Copyright © 2026 Kavish Koradia
 Public Frontend: https://nocturne-dun-xi.vercel.app
 Backend: https://nocturne-8tko.onrender.com
+
+NOCTURNE 4.0 introduces:
+- Single Player mode
+- AI-controlled Killer in Single Player
+- Investigator role selection
+- CASUAL / DETECTIVE / EXPERT / NOCTURNE difficulty
+- Autonomous AI characters
+- Server-authoritative hidden case truth
+- Multiplayer mode retained
