@@ -3012,7 +3012,7 @@ Nearby people: ${this.people
         .to(pid)
         .emit(
           "errorMessage",
-          "Image generation is not configured on the NOCTURNE server. Check OPENAI_API_KEY on Render and redeploy."
+          "Image generation is not configured on the NOCTURNE server. Check GEMINI_API_KEY and GEMINI_IMAGE_MODEL on Render and redeploy."
         );
 
 
