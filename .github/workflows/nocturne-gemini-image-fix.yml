@@ -1,0 +1,44 @@
+name: NOCTURNE Gemini Image Migration
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch game.js
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('nocturne-vercel-3.5/backend/server/game.js')
+          s = p.read_text()
+          s = s.replace('const apiKey=String(process.env.OPENAI_API_KEY||"").trim();', 'const apiKey=String(process.env.OPENAI_API_KEY||"").trim();\nconst geminiApiKey=String(process.env.GEMINI_API_KEY||"").trim();')
+          s = s.replace('const ai=OpenAI&&apiKey?new OpenAI({apiKey}):null;', 'const ai=OpenAI&&apiKey?new OpenAI({apiKey}):null;\nconst geminiImageAi=OpenAI&&geminiApiKey?new OpenAI({apiKey:geminiApiKey,baseURL:"https://generativelanguage.googleapis.com/v1beta/openai/"}):null;')
+          s = s.replace('const IMG=process.env.OPENAI_IMAGE_MODEL||"gpt-image-2";', 'const IMG=process.env.GEMINI_IMAGE_MODEL||"gemini-2.5-flash-image";')
+          s = s.replace('if(!ai){', 'if(!geminiImageAi){', 1)
+          s = s.replace('OPENAI_API_KEY is missing or OpenAI SDK failed to load.', 'GEMINI_API_KEY is missing or the image SDK failed to load.', 1)
+          s = s.replace('Check OPENAI_API_KEY on Render and redeploy.', 'Check GEMINI_API_KEY and GEMINI_IMAGE_MODEL on Render and redeploy.', 1)
+          s = s.replace('await ai.images.generate({model:IMG,prompt,size:"1536x1024",quality:"medium"});', 'await geminiImageAi.images.generate({model:IMG,prompt,size:"1344x768",response_format:"b64_json",n:1});', 1)
+          s = s.replace('console.log(`[NOCTURNE] Image request: model=${IMG}', 'console.log(`[NOCTURNE] Gemini image request: model=${IMG}', 1)
+          p.write_text(s)
+          PY
+
+      - name: Validate
+        run: node --check nocturne-vercel-3.5/backend/server/game.js
+
+      - name: Commit game.js
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add nocturne-vercel-3.5/backend/server/game.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Switch NOCTURNE image generation to Gemini"
+          git push
