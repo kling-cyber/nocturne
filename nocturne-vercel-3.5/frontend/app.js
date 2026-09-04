@@ -1,7 +1,16 @@
 const SOCKET_URL=(window.NOCTURNE_SERVER_URL||"").trim().replace(/\/$/,"");
 const sock=io(SOCKET_URL||undefined,{transports:["websocket","polling"],withCredentials:false});
 
-let S=null,me=null,setupMode="create",activeTab="act",busy=false,incomingQ=null;
+let S=null;
+let me=null;
+let setupMode="create";
+let activeTab="act";
+let busy=false;
+let incomingQ=null;
+
+window.NOCTURNE_MODE="MULTIPLAYER";
+window.NOCTURNE_DIFFICULTY="";
+window.NOCTURNE_INVESTIGATOR_ROLE="";
 
 const $=id=>document.getElementById(id);
 
@@ -23,39 +32,52 @@ const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({
   "'":"&#39;"
 }[c]));
 
-const js=x=>String(x??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+const js=x=>String(x??"")
+  .replace(/\\/g,"\\\\")
+  .replace(/'/g,"\\'");
 
 function show(id){
-  ["landing","lobby","singleSetup","game"].forEach(x=>{
+  [
+    "landing",
+    "lobby",
+    "game",
+    "singleSetup"
+  ].forEach(x=>{
     $(x)?.classList.toggle("hide",x!==id);
   });
+
   window.scrollTo(0,0);
 }
 
 function toast(t){
   if(!$('toast'))return;
+
   $('toast').innerHTML=`<div class="toast">${esc(t)}</div>`;
+
   clearTimeout(toast.t);
-  toast.t=setTimeout(()=>$('toast').innerHTML="",2800);
+
+  toast.t=setTimeout(()=>{
+    $('toast').innerHTML="";
+  },2800);
 }
 
 function setBusy(on,text="Working…"){
   busy=on;
-  $('busyText').textContent=text;
-  $('busy').classList.toggle('hide',!on);
+
+  if($('busyText')){
+    $('busyText').textContent=text;
+  }
+
+  if($('busy')){
+    $('busy').classList.toggle('hide',!on);
+  }
 }
 
-
-/* =========================================================
-   SETUP
-   ========================================================= */
-
 function openSetup(mode){
-
   setupMode=mode;
 
-  if(mode==='single'){
-    show('singleSetup');
+  if(mode==="single"){
+    show("singleSetup");
 
     setTimeout(()=>{
       $('singleNameInput')?.focus();
@@ -74,7 +96,10 @@ function openSetup(mode){
       ?'Create a private room, then share its four-character code with your players.'
       :'Enter the room code shared by the host.';
 
-  $('codeLabel').classList.toggle('hide',mode!=='join');
+  $('codeLabel').classList.toggle(
+    'hide',
+    mode!=='join'
+  );
 
   $('modalGo').textContent=
     mode==='create'
@@ -84,41 +109,47 @@ function openSetup(mode){
   $('modal').classList.remove('hide');
 
   setTimeout(()=>{
-    $('nameInput').focus();
+    $('nameInput')?.focus();
   },50);
 }
 
-
 function closeModal(){
-  $('modal').classList.add('hide');
+  $('modal')?.classList.add('hide');
 }
 
-
 function startSinglePlayer(){
-
   const name=
-    $('singleNameInput')?.value.trim()||'Player';
+    $('singleNameInput')?.value.trim()
+    ||'Player';
+
+  const investigatorRole=
+    $('singleRoleInput')?.value
+    ||'';
+
+  const difficulty=
+    $('difficultyInput')?.value
+    ||'DETECTIVE';
 
   if(name.length>24){
     return toast('Name must be 24 characters or fewer.');
   }
 
-  const investigatorRole=
-    $('singleRoleInput')?.value||
-    'Lead Detective';
+  if(!investigatorRole){
+    return toast('Choose an investigator role.');
+  }
 
-  const difficulty=
-    $('difficultyInput')?.value||
-    'DETECTIVE';
+  if(!difficulty){
+    return toast('Choose a difficulty.');
+  }
 
   window.NOCTURNE_NAME=name;
-  window.NOCTURNE_MODE='SINGLE_PLAYER';
+  window.NOCTURNE_MODE="SINGLE_PLAYER";
   window.NOCTURNE_DIFFICULTY=difficulty;
   window.NOCTURNE_INVESTIGATOR_ROLE=investigatorRole;
 
   setBusy(
     true,
-    'Generating your case, cast, secrets and hidden truth…'
+    'Generating your single-player case…'
   );
 
   sock.emit('createSinglePlayer',{
@@ -128,11 +159,10 @@ function startSinglePlayer(){
   });
 }
 
-
 function submitSetup(){
-
   const name=
-    $('nameInput').value.trim()||'Player';
+    $('nameInput')?.value.trim()
+    ||'Player';
 
   if(name.length>24){
     return toast('Name must be 24 characters or fewer.');
@@ -141,21 +171,20 @@ function submitSetup(){
   window.NOCTURNE_NAME=name;
 
   if(setupMode==='create'){
+    window.NOCTURNE_MODE="MULTIPLAYER";
 
-    window.NOCTURNE_MODE='MULTIPLAYER';
-
-    sock.emit('createRoom',{name});
-
+    sock.emit('createRoom',{
+      name
+    });
   }else{
-
     const code=
-      $('codeInput').value.trim().toUpperCase();
+      $('codeInput')?.value.trim().toUpperCase();
 
     if(!/^[A-Z2-9]{4}$/.test(code)){
       return toast('Enter the 4-character room code.');
     }
 
-    window.NOCTURNE_MODE='MULTIPLAYER';
+    window.NOCTURNE_MODE="MULTIPLAYER";
 
     sock.emit('joinRoom',{
       code,
@@ -171,31 +200,24 @@ function submitSetup(){
   );
 }
 
-
-/* =========================================================
-   LOBBY
-   ========================================================= */
-
 function copyCode(){
-
-  const v=$('code').textContent;
+  const v=$('code')?.textContent||"";
 
   if(navigator.clipboard?.writeText){
-
     navigator.clipboard
       .writeText(v)
-      .then(()=>toast('Room code copied.'))
-      .catch(()=>toast('Room code: '+v));
-
+      .then(()=>{
+        toast('Room code copied.');
+      })
+      .catch(()=>{
+        toast('Room code: '+v);
+      });
   }else{
-
     toast('Room code: '+v);
   }
 }
 
-
 function launchCase(){
-
   setBusy(
     true,
     'Generating the world, cast, secrets and timeline…'
@@ -204,121 +226,137 @@ function launchCase(){
   sock.emit('launchCase');
 }
 
-
-/* =========================================================
-   GAME HELPERS
-   ========================================================= */
-
 function toggleSide(){
-  $('leftSide').classList.toggle('open');
+  $('leftSide')?.classList.toggle('open');
 }
 
 function scrollFeed(){
-  $('events').scrollTop=0;
+  if($('events')){
+    $('events').scrollTop=0;
+  }
 }
 
 function currentPlayerId(){
-
-  return me?.playerId||
-    S?.people?.find(
+  return me?.playerId
+    ||S?.people?.find(
       p=>p.isPlayer&&p.name===window.NOCTURNE_NAME
-    )?.id||
-    null;
+    )?.id
+    ||null;
 }
 
 
-/* =========================================================
+/* =========================
    SOCKET CONNECTION
-   ========================================================= */
+========================= */
 
 sock.on('connect',()=>{
+  if($('conn')){
+    $('conn').textContent='ONLINE';
+    $('conn').style.color='var(--ok)';
+  }
 
-  $('conn').textContent='ONLINE';
-
-  $('connection').classList.add('online');
-
-  $('conn').style.color='var(--ok)';
+  $('connection')?.classList.add('online');
 });
 
-
 sock.on('disconnect',()=>{
+  if($('conn')){
+    $('conn').textContent='OFFLINE';
+    $('conn').style.color='var(--danger)';
+  }
 
-  $('conn').textContent='OFFLINE';
-
-  $('connection').classList.remove('online');
-
-  $('conn').style.color='var(--danger)';
+  $('connection')?.classList.remove('online');
 
   setBusy(false);
 
   toast('Connection lost. Trying to reconnect…');
 });
 
-
-/* =========================================================
-   ROOM EVENTS
-   ========================================================= */
-
-sock.on('roomJoined',d=>{
+sock.on('connect_error',error=>{
+  console.error('NOCTURNE Socket.IO connection error:',error);
 
   setBusy(false);
+
+  toast('Unable to connect to the NOCTURNE server.');
+});
+
+
+/* =========================
+   ROOM / CASE EVENTS
+========================= */
+
+sock.on('roomJoined',d=>{
+  setBusy(false);
+
+  window.NOCTURNE_MODE=
+    d.mode||"MULTIPLAYER";
 
   show('lobby');
 
-  $('code').textContent=d.code;
+  if($('code')){
+    $('code').textContent=d.code;
+  }
 
   window.NOCTURNE_HOST=!!d.host;
-
-  window.NOCTURNE_MODE='MULTIPLAYER';
 });
 
-
 sock.on('lobby',d=>{
-
   const n=d.players.length;
 
-  $('code').textContent=d.code;
+  if($('code')){
+    $('code').textContent=d.code;
+  }
 
-  $('playerCount').textContent=`${n} / 8`;
+  if($('playerCount')){
+    $('playerCount').textContent=`${n} / 8`;
+  }
 
-  $('players').innerHTML=d.players.map(p=>`
-    <div class="person">
-      <span>${p.host?'CASE HOST':'PLAYER'}</span>
-      <b>${esc(p.name)}</b>
-    </div>
-  `).join('');
+  if($('players')){
+    $('players').innerHTML=d.players
+      .map(p=>`
+        <div class="person">
+          <span>${p.host?'CASE HOST':'PLAYER'}</span>
+          <b>${esc(p.name)}</b>
+        </div>
+      `)
+      .join('');
+  }
 
   const b=$('launch');
 
-  b.style.display=
-    window.NOCTURNE_HOST
-      ?'block'
-      :'none';
+  if(b){
+    b.style.display=
+      window.NOCTURNE_HOST
+        ?'block'
+        :'none';
 
-  b.disabled=n<2;
+    b.disabled=n<2;
+  }
 
-  $('launchHint').textContent=
-    n<2
-      ?'At least 2 players are required.'
-      :'Everyone is in. The host can begin.';
+  if($('launchHint')){
+    $('launchHint').textContent=
+      n<2
+        ?'At least 2 players are required.'
+        :'Everyone is in. The host can begin.';
+  }
 });
 
-
 sock.on('errorMessage',x=>{
-
   setBusy(false);
-
   toast(x);
 });
 
-
-/* =========================================================
-   CASE START
-   ========================================================= */
-
 sock.on('caseStarted',d=>{
-
   S=d.public;
+
+  window.NOCTURNE_MODE=
+    S?.mode
+    ||window.NOCTURNE_MODE
+    ||"MULTIPLAYER";
+
+  window.NOCTURNE_DIFFICULTY=
+    S?.difficulty
+    ||window.NOCTURNE_DIFFICULTY
+    ||"";
 
   setBusy(false);
 
@@ -327,84 +365,87 @@ sock.on('caseStarted',d=>{
   render();
 });
 
-
 sock.on('privateRole',d=>{
-
   me=d;
-
   renderPrivate();
 });
-
 
 sock.on('privateState',d=>{
-
   me=d;
-
   renderPrivate();
 });
 
 
+/*
+ IMPORTANT FIX:
+
+ The server sends stateUpdate after a player action.
+
+ The old frontend updated S and rendered the game,
+ but forgot to call setBusy(false).
+
+ That caused the permanent:
+
+ "Resolving action and NPC reactions..."
+
+ overlay.
+
+ Now every state update clears the loading state.
+*/
 sock.on('stateUpdate',d=>{
+  setBusy(false);
 
   S=d;
+
+  window.NOCTURNE_MODE=
+    S?.mode
+    ||window.NOCTURNE_MODE
+    ||"MULTIPLAYER";
+
+  window.NOCTURNE_DIFFICULTY=
+    S?.difficulty
+    ||window.NOCTURNE_DIFFICULTY
+    ||"";
 
   render();
 });
 
-
-/* =========================================================
-   CHAT
-   ========================================================= */
-
 sock.on('chat',d=>{
-
-  addChat(
-    d.name,
-    d.text
-  );
+  addChat(d.name,d.text);
 });
 
-
-/* =========================================================
-   VISUAL EVIDENCE
-   ========================================================= */
-
 sock.on('visualReady',d=>{
-
   setBusy(false);
-
   showVisual(d);
 });
 
-
-/* =========================================================
-   QUESTIONS
-   ========================================================= */
-
 sock.on('incomingQuestion',d=>{
+  setBusy(false);
 
   incomingQ=d;
 
-  $('qFrom').textContent=
-    `${d.from} asks:`;
+  if($('qFrom')){
+    $('qFrom').textContent=
+      `${d.from} asks:`;
+  }
 
-  $('qText').textContent=
-    d.question;
+  if($('qText')){
+    $('qText').textContent=
+      d.question;
+  }
 
-  $('answerInput').value='';
+  if($('answerInput')){
+    $('answerInput').value='';
+  }
 
-  $('questionModal')
-    .classList
-    .remove('hide');
+  $('questionModal')?.classList.remove('hide');
 
   setTimeout(()=>{
-    $('answerInput').focus();
+    $('answerInput')?.focus();
   },50);
 });
 
-
 sock.on('questionPending',d=>{
-
   setBusy(false);
 
   toast(
@@ -412,9 +453,7 @@ sock.on('questionPending',d=>{
   );
 });
 
-
 sock.on('questionAnswer',d=>{
-
   setBusy(false);
 
   toast(
@@ -425,73 +464,72 @@ sock.on('questionAnswer',d=>{
 });
 
 
-/* =========================================================
-   PRIVATE ROLE / MEMORY
-   ========================================================= */
+/* =========================
+   PRIVATE PLAYER STATE
+========================= */
 
 function renderPrivate(){
-
   if(!me)return;
 
-  $('role').textContent=
-    me.role;
+  if($('role')){
+    $('role').textContent=
+      me.role||'INVESTIGATOR';
+  }
 
-  $('roleMini').textContent=
-    `ROLE: ${me.role}${
-      me.investigatorRole
+  if($('roleMini')){
+    $('roleMini').textContent=
+      `ROLE: ${me.role||'INVESTIGATOR'}`
+      +(me.investigatorRole
         ?' · '+me.investigatorRole
-        :''
-    }`;
+        :'');
+  }
 
-  $('objective').textContent=
-    me.objective||'';
+  if($('objective')){
+    $('objective').textContent=
+      me.objective||'';
+  }
 
-
-  $('memory').innerHTML=
-    me.memory?.length
-      ?`
-        <div class="memory">
-
-          <b>PERSONAL MEMORY</b>
-
-          ${
-            me.memory
-              .slice(-5)
-              .reverse()
-              .map(x=>`
-                <p>
-                  <span>
-                    ${esc(x.type)}
-                    ·
-                    ${x.confidence}% confidence
-                  </span>
-
-                  ${esc(x.text)}
-                </p>
-              `)
-              .join('')
-          }
-
-        </div>
-      `
-      :'';
-
+  if($('memory')){
+    $('memory').innerHTML=
+      me.memory?.length
+        ?`
+          <div class="memory">
+            <b>PERSONAL MEMORY</b>
+            ${
+              me.memory
+                .slice(-5)
+                .reverse()
+                .map(x=>`
+                  <p>
+                    <span>
+                      ${esc(x.type)}
+                      ·
+                      ${x.confidence}% confidence
+                    </span>
+                    ${esc(x.text)}
+                  </p>
+                `)
+                .join('')
+            }
+          </div>
+        `
+        :'';
+  }
 
   /*
-     Multiplayer:
-     Human Killer gets the critical decision button.
+    Multiplayer:
+    Human Killer gets the critical decision button.
 
-     Single player:
-     The Killer is an NPC, so the human investigator
-     never receives this control.
+    Single Player:
+    Human is never the Killer, so this remains hidden.
   */
-
   if(
-    me.role==='KILLER' &&
-    S?.phase==='CRIME' &&
-    window.NOCTURNE_MODE!=='SINGLE_PLAYER'
+    window.NOCTURNE_MODE!=="SINGLE_PLAYER"
+    &&
+    me.role==='KILLER'
+    &&
+    S?.phase==='CRIME'
   ){
-
     $('killerControl').innerHTML=`
       <button
         class="killerBtn"
@@ -500,16 +538,12 @@ function renderPrivate(){
         COMMIT TO THE CRITICAL DECISION
       </button>
     `;
-
-  }else{
-
+  }else if($('killerControl')){
     $('killerControl').innerHTML='';
   }
 }
 
-
 function killerDecision(){
-
   setBusy(
     true,
     'Resolving the critical window…'
@@ -519,12 +553,11 @@ function killerDecision(){
 }
 
 
-/* =========================================================
-   MAIN RENDER
-   ========================================================= */
+/* =========================
+   MAIN GAME RENDER
+========================= */
 
 function render(){
-
   if(!S)return;
 
   const free=
@@ -539,385 +572,369 @@ function render(){
   const oldQTarget=
     $('qTarget')?.value||'';
 
-
-  $('case').textContent=
-    '#'+S.caseId+' · LIVE SIMULATION';
-
-  $('world').textContent=
-    S.world.name;
-
-  $('clock').textContent=
-    S.clock;
-
-  $('phase').textContent=
-    S.phase;
-
-
-  const modeName=
-    S.mode==='SINGLE_PLAYER'
-      ?'SINGLE PLAYER'
-      :'MULTIPLAYER';
-
-  if($('mode')){
-    $('mode').textContent=modeName;
+  if($('case')){
+    $('case').textContent=
+      '#'+S.caseId+' · LIVE SIMULATION';
   }
 
+  if($('world')){
+    $('world').textContent=
+      S.world?.name||'UNKNOWN';
+  }
 
-  $('phaseHelp').textContent=
-    ({
-      "PRE-CRIME":
-        S.mode==='SINGLE_PLAYER'
-          ?'The world is moving. Learn the people, routines and relationships before the critical window.'
-          :'People are moving freely. Build relationships and observations before the critical window.',
+  if($('clock')){
+    $('clock').textContent=
+      S.clock||'';
+  }
 
-      "CRIME":
-        S.mode==='SINGLE_PLAYER'
-          ?'The critical window is active. The Killer is an autonomous NPC making decisions inside the simulation.'
-          :'The critical window is open. The human Killer controls the turning point.',
+  if($('phase')){
+    $('phase').textContent=
+      S.phase||'';
+  }
 
-      "POST-CRIME":
-        'A death has been discovered. Secure observations and compare accounts.',
+  const phaseHelp={
+    "PRE-CRIME":
+      window.NOCTURNE_MODE==="SINGLE_PLAYER"
+        ?"The case is forming. Study the cast, explore the setting and learn what people remember."
+        :"People are moving freely. Build relationships and observations before the critical window.",
 
-      "INVESTIGATION":
-        'Reconstruct the timeline, test contradictions and build a defensible case.',
+    "CRIME":
+      window.NOCTURNE_MODE==="SINGLE_PLAYER"
+        ?"The critical window is active. The AI-controlled Killer is acting inside the simulation."
+        :"The critical window is open. The human Killer controls the turning point.",
 
-      "ENDED":
-        'The case has reached a verdict.'
+    "POST-CRIME":
+      "A death has been discovered. Secure observations and compare accounts.",
 
-    }[S.phase]||
-      'The case is live. Your choices advance time.'
-    );
+    "INVESTIGATION":
+      "Reconstruct the timeline, test contradictions and build a defensible case.",
 
+    "ENDED":
+      "The case has reached a verdict."
+  };
 
-  $('aliveCount').textContent=
-    `${S.people.filter(p=>p.alive).length} ALIVE`;
+  if($('phaseHelp')){
+    $('phaseHelp').textContent=
+      phaseHelp[S.phase]
+      ||'The case is live. Your choices advance time.';
+  }
 
+  if($('aliveCount')){
+    $('aliveCount').textContent=
+      `${S.people.filter(p=>p.alive).length} ALIVE`;
+  }
+
+  if($('modeStat')){
+    $('modeStat').textContent=
+      window.NOCTURNE_MODE==="SINGLE_PLAYER"
+        ?'SINGLE PLAYER'
+        :'MULTIPLAYER';
+  }
+
+  if($('mode')){
+    $('mode').textContent=
+      window.NOCTURNE_MODE==="SINGLE_PLAYER"
+        ?'SINGLE PLAYER'
+        :'MULTIPLAYER';
+  }
 
   /* PEOPLE */
 
-  $('people').innerHTML=
-    S.people.map(p=>`
-
-      <div
-        class="person ${p.alive?'':'dead'}"
-        onclick="${
-          p.alive
-            ?`prefill('Talk to ${js(p.name)}')`
-            :''
-        }"
-      >
-
-        <span>
-          ${p.isPlayer?'PLAYER':'NPC'}
-          ·
-          ${esc(
-            p.investigatorRole||
-            p.job||
-            'GUEST'
-          )}
-        </span>
-
-        <b>
-          ${esc(p.name)}
-
-          ${
+  if($('people')){
+    $('people').innerHTML=
+      S.people.map(p=>`
+        <div
+          class="person ${p.alive?'':'dead'}"
+          onclick="${
             p.alive
-              ?`<i class="susp">
-                  ${p.suspicion}%
-                </i>`
-              :' · DECEASED'
-          }
+              ?`prefill('Talk to ${js(p.name)}')`
+              :''
+          }"
+        >
+          <span>
+            ${p.isPlayer?'PLAYER':'NPC'}
+            ·
+            ${esc(p.investigatorRole||p.job||'GUEST')}
+          </span>
 
-        </b>
+          <b>
+            ${esc(p.name)}
+            ${
+              p.alive
+                ?`<i class="susp">${p.suspicion}%</i>`
+                :' · DECEASED'
+            }
+          </b>
 
-        <span>
-          ${
-            p.alive
-              ?esc(p.location)
-              :'Last known: '+esc(p.location)
-          }
-        </span>
-
-      </div>
-
-    `).join('');
-
+          <span>
+            ${
+              p.alive
+                ?esc(p.location)
+                :'Last known: '+esc(p.location)
+            }
+          </span>
+        </div>
+      `).join('');
+  }
 
   /* LOCATIONS */
 
-  $('locations').innerHTML=
-    S.world.areas.map(x=>`
+  if($('locations')){
+    $('locations').innerHTML=
+      S.world.areas.map(x=>`
+        <div
+          class="loc"
+          onclick="prefill('Move to ${js(x)}')"
+        >
+          <b>${esc(x)}</b>
 
-      <div
-        class="loc"
-        onclick="prefill('Move to ${js(x)}')"
-      >
-
-        <b>${esc(x)}</b>
-
-        <span>
-          ${
-            S.people.filter(
-              p=>p.alive&&p.location===x
-            ).length
-          }
-          currently present
-        </span>
-
-      </div>
-
-    `).join('');
-
+          <span>
+            ${
+              S.people.filter(
+                p=>p.alive&&p.location===x
+              ).length
+            }
+            currently present
+          </span>
+        </div>
+      `).join('');
+  }
 
   /* EVENTS */
 
-  $('events').innerHTML=
-    S.events
-      .slice()
-      .reverse()
-      .map(e=>`
+  if($('events')){
+    $('events').innerHTML=
+      S.events
+        .slice()
+        .reverse()
+        .map(e=>`
+          <div class="event ${esc(e.type)}">
+            <small>
+              ${esc(e.time)} · ${esc(e.type)}
+            </small>
 
-        <div class="event ${esc(e.type)}">
+            <p>
+              ${esc(e.text)}
+            </p>
+          </div>
+        `)
+        .join('');
+  }
 
-          <small>
-            ${esc(e.time)}
-            ·
-            ${esc(e.type)}
-          </small>
+  if($('eventCount')){
+    $('eventCount').textContent=
+      `${S.events.length} EVENTS`;
+  }
 
-          <p>
-            ${esc(e.text)}
-          </p>
-
-        </div>
-
-      `).join('');
-
-
-  $('eventCount').textContent=
-    `${S.events.length} EVENTS`;
-
-  $('evCount').textContent=
-    S.evidence.length
-      ?`(${S.evidence.length})`
-      :'';
-
+  if($('evCount')){
+    $('evCount').textContent=
+      S.evidence.length
+        ?`(${S.evidence.length})`
+        :'';
+  }
 
   renderPrivate();
 
 
   /* ACTIONS */
 
-  $('act').innerHTML=`
+  if($('act')){
+    $('act').innerHTML=`
+      <div class="action-grid">
+        ${
+          [
+            ['Talk','Talk to someone nearby'],
+            ['Move','Move somewhere'],
+            ['Search','Search the current area'],
+            ['Follow','Follow a person'],
+            ['Observe','Wait and observe'],
+            ['Recall','Review what I know']
+          ]
+          .map(x=>`
+            <div
+              class="card"
+              onclick="prefill('${js(x[1])}')"
+            >
+              <b>${x[0]}</b>
+              <p>${x[1]}</p>
+            </div>
+          `)
+          .join('')
+        }
+      </div>
 
-    <div class="action-grid">
+      <div class="composer">
+        <input
+          id="free"
+          maxlength="600"
+          placeholder="Describe exactly what your character tries to do…"
+          value="${esc(free)}"
+        >
 
-      ${
-        [
-          ['Talk','Talk to someone nearby'],
-          ['Move','Move somewhere'],
-          ['Search','Search the current area'],
-          ['Follow','Follow a person'],
-          ['Observe','Wait and observe'],
-          ['Recall','Review what I know']
-        ]
-        .map(x=>`
-
-          <div
-            class="card"
-            onclick="prefill('${js(x[1])}')"
-          >
-
-            <b>${x[0]}</b>
-
-            <p>${x[1]}</p>
-
-          </div>
-
-        `)
-        .join('')
-      }
-
-    </div>
-
-
-    <div class="composer">
-
-      <input
-        id="free"
-        maxlength="600"
-        placeholder="Describe exactly what your character tries to do…"
-        value="${esc(free)}"
-      >
-
-      <button
-        class="primary"
-        onclick="send()"
-      >
-        DO ACTION
-      </button>
-
-    </div>
-  `;
+        <button
+          class="primary"
+          onclick="send()"
+        >
+          DO ACTION
+        </button>
+      </div>
+    `;
+  }
 
 
   /* INVESTIGATION */
 
-  $('invest').innerHTML=`
+  if($('invest')){
+    $('invest').innerHTML=`
+      <div class="investBox">
 
-    <div class="investBox">
+        <label>
+          WHAT DO YOU WANT TO INVESTIGATE?
 
-      <label>
-        WHAT DO YOU WANT TO INVESTIGATE?
+          <input
+            id="investTarget"
+            maxlength="180"
+            placeholder="Person, place, object or detail"
+          >
+        </label>
 
-        <input
-          id="investTarget"
-          maxlength="180"
-          placeholder="Person, place, object or detail"
-        >
-      </label>
+        <div class="investBtns">
 
+          <button
+            class="primary"
+            onclick="investPrompt('observe')"
+          >
+            INSPECT / SEARCH
+          </button>
 
-      <div class="investBtns">
+          <button
+            class="secondary"
+            onclick="investPrompt('question')"
+          >
+            QUESTION PERSON
+          </button>
 
-        <button
-          class="primary"
-          onclick="investPrompt('observe')"
-        >
-          INSPECT / SEARCH
-        </button>
-
-        <button
-          class="secondary"
-          onclick="investPrompt('question')"
-        >
-          QUESTION PERSON
-        </button>
+        </div>
 
       </div>
-
-    </div>
-  `;
+    `;
+  }
 
 
   /* EVIDENCE */
 
-  $('evidence').innerHTML=
-    S.evidence.length
-      ?`
+  if($('evidence')){
+    $('evidence').innerHTML=
+      S.evidence.length
+        ?`
+          <div class="egrid">
 
-        <div class="egrid">
+            ${
+              S.evidence
+                .slice()
+                .reverse()
+                .map(e=>`
+                  <div class="ev">
 
-          ${
-            S.evidence
-              .slice()
-              .reverse()
-              .map(e=>`
+                    ${
+                      e.image
+                        ?`
+                          <img
+                            src="${e.image}"
+                            alt="Case evidence image"
+                          >
+                        `
+                        :''
+                    }
 
-                <div class="ev">
+                    <div>
 
-                  ${
-                    e.image
-                      ?`
-                        <img
-                          src="${e.image}"
-                          alt="Case evidence image"
-                        >
-                      `
-                      :''
-                  }
+                      <b>
+                        ${esc(e.title)}
+                      </b>
 
-                  <div>
+                      <p>
+                        ${esc(e.description)}
+                      </p>
 
-                    <b>
-                      ${esc(e.title)}
-                    </b>
+                      <span class="tag">
+                        ${esc(e.type).toUpperCase()}
+                        ·
+                        RELIABILITY
+                        ${Math.round(e.reliability)}%
+                        ${
+                          e.source
+                            ?' · '+esc(e.source)
+                            :''
+                        }
+                      </span>
 
-                    <p>
-                      ${esc(e.description)}
-                    </p>
-
-                    <span class="tag">
-                      ${esc(e.type).toUpperCase()}
-                      ·
-                      RELIABILITY
-                      ${Math.round(e.reliability)}%
-                      ${
-                        e.source
-                          ?' · '+esc(e.source)
-                          :''
-                      }
-                    </span>
+                    </div>
 
                   </div>
+                `)
+                .join('')
+            }
 
-                </div>
-
-              `)
-              .join('')
-          }
-
-        </div>
-
-      `
-      :`
-
-        <div class="empty">
-          No evidence logged yet.
-          Observe, question and search.
-        </div>
-      `;
+          </div>
+        `
+        :`
+          <div class="empty">
+            No evidence logged yet.
+            Observe, question and search.
+          </div>
+        `;
+  }
 
 
   /* VISUAL */
 
-  $('visual').innerHTML=`
+  if($('visual')){
+    $('visual').innerHTML=`
+      <div class="visual">
 
-    <div class="visual">
+        <div
+          class="visualbox"
+          id="visualbox"
+        >
+          <div class="overlay">
+            CASE EVIDENCE NETWORK
+            <br>
+            ${esc(S.world.name)}
+            <br>
+            ${S.clock}
+          </div>
 
-      <div
-        class="visualbox"
-        id="visualbox"
-      >
-
-        <div class="overlay">
-          CASE EVIDENCE NETWORK<br>
-          ${esc(S.world.name)}<br>
-          ${S.clock}
+          <div class="scan"></div>
         </div>
 
-        <div class="scan"></div>
+        <p>
+          Visuals are imperfect observations tied
+          to the current case time. Corroborate them
+          with independent evidence.
+        </p>
+
+        <div class="visualBtns">
+
+          <button
+            class="primary"
+            onclick="visual('cctv')"
+          >
+            REQUEST CCTV STILL
+          </button>
+
+          <button
+            class="secondary"
+            onclick="visual('photo')"
+          >
+            REQUEST SCENE PHOTO
+          </button>
+
+        </div>
 
       </div>
-
-
-      <p>
-        Visuals are imperfect observations tied to
-        the current case time. Corroborate them with
-        independent evidence.
-      </p>
-
-
-      <div class="visualBtns">
-
-        <button
-          class="primary"
-          onclick="visual('cctv')"
-        >
-          REQUEST CCTV STILL
-        </button>
-
-        <button
-          class="secondary"
-          onclick="visual('photo')"
-        >
-          REQUEST SCENE PHOTO
-        </button>
-
-      </div>
-
-    </div>
-  `;
+    `;
+  }
 
 
   /* QUESTIONS */
@@ -927,89 +944,124 @@ function render(){
       p=>p.alive&&p.id!==currentPlayerId()
     );
 
+  if($('question')){
+    $('question').innerHTML=`
+      <div class="investBox">
 
-  $('question').innerHTML=`
+        <label>
+          WHO DO YOU WANT TO QUESTION?
 
-    <div class="investBox">
+          <select id="qTarget">
 
-      <label>
-        WHO DO YOU WANT TO QUESTION?
+            ${
+              targets.map(p=>`
+                <option value="${esc(p.id)}">
+                  ${esc(p.name)}
+                  ·
+                  ${esc(p.investigatorRole||p.job||'NPC')}
+                  ·
+                  ${esc(p.location)}
+                </option>
+              `).join('')
+            }
 
-        <select id="qTarget">
+          </select>
 
-          ${
-            targets.map(p=>`
+        </label>
 
-              <option value="${esc(p.id)}">
+        <label>
+          QUESTION
 
-                ${esc(p.name)}
-                ·
-                ${esc(
-                  p.investigatorRole||
-                  p.job||
-                  'NPC'
-                )}
-                ·
-                ${esc(p.location)}
+          <textarea
+            id="qInput"
+            maxlength="400"
+            rows="4"
+            placeholder="Ask something specific. You control the question."
+          ></textarea>
 
-              </option>
+        </label>
 
-            `).join('')
-          }
+        <div class="investBtns">
 
-        </select>
+          <button
+            class="primary"
+            onclick="askSelected()"
+          >
+            CALL &amp; ASK
+          </button>
 
-      </label>
+          <button
+            class="secondary"
+            onclick="askPreset('where')"
+          >
+            WHERE WERE YOU?
+          </button>
 
+          <button
+            class="secondary"
+            onclick="askPreset('seen')"
+          >
+            WHAT DID YOU SEE?
+          </button>
 
-      <label>
-        QUESTION
+        </div>
 
-        <textarea
-          id="qInput"
-          maxlength="400"
-          rows="4"
-          placeholder="Ask something specific. You control the question."
-        ></textarea>
-
-      </label>
-
-
-      <div class="investBtns">
-
-        <button
-          class="primary"
-          onclick="askSelected()"
-        >
-          CALL &amp; ASK
-        </button>
-
-        <button
-          class="secondary"
-          onclick="askPreset('where')"
-        >
-          WHERE WERE YOU?
-        </button>
-
-        <button
-          class="secondary"
-          onclick="askPreset('seen')"
-        >
-          WHAT DID YOU SEE?
-        </button>
+        <p class="modalHint">
+          NPCs answer from their own memories,
+          stress, goals and secrets.
+          Human players receive the question privately
+          and write their own answer.
+        </p>
 
       </div>
+    `;
+  }
 
 
-      <p class="modalHint">
-        NPCs answer from their own memories, stress,
-        goals and secrets. Human players receive the
-        question privately and write their own answer.
-      </p>
+  /* ACCUSATION */
 
-    </div>
-  `;
+  const suspects=
+    S.people.filter(
+      p=>p.alive&&p.id!==currentPlayerId()
+    );
 
+  if($('accuse')){
+    $('accuse').innerHTML=`
+
+      <div class="empty">
+        An accusation is public.
+        Use corroborated evidence and contradictions,
+        not the suspicion percentage alone.
+      </div>
+
+      <div class="action-grid">
+
+        ${
+          suspects.map(p=>`
+            <div
+              class="card danger"
+              onclick="accuse(
+                '${js(p.id)}',
+                '${js(p.name)}'
+              )"
+            >
+              <b>${esc(p.name)}</b>
+
+              <p>
+                Public suspicion
+                ${p.suspicion}%
+                · accuse this person
+              </p>
+            </div>
+          `).join('')
+        }
+
+      </div>
+    `;
+  }
+
+
+  /* RESTORE INPUT VALUES */
 
   if($('investTarget')){
     $('investTarget').value=
@@ -1022,79 +1074,26 @@ function render(){
   }
 
   if(
-    $('qTarget')&&
-    oldQTarget&&
+    $('qTarget')
+    &&
+    oldQTarget
+    &&
     [...$('qTarget').options]
       .some(o=>o.value===oldQTarget)
   ){
-
     $('qTarget').value=
       oldQTarget;
   }
 
-
-  /* ACCUSATION */
-
-  const suspects=
-    S.people.filter(
-      p=>p.alive&&p.id!==currentPlayerId()
-    );
-
-
-  $('accuse').innerHTML=`
-
-    <div class="empty">
-      An accusation is public.
-      Use corroborated evidence and contradictions,
-      not the suspicion percentage alone.
-    </div>
-
-
-    <div class="action-grid">
-
-      ${
-        suspects.map(p=>`
-
-          <div
-            class="card danger"
-            onclick="accuse(
-              '${js(p.id)}',
-              '${js(p.name)}'
-            )"
-          >
-
-            <b>
-              ${esc(p.name)}
-            </b>
-
-            <p>
-              Public suspicion
-              ${p.suspicion}%
-              · accuse this person
-            </p>
-
-          </div>
-
-        `).join('')
-      }
-
-    </div>
-  `;
-
-
-  tab(
-    activeTab,
-    false
-  );
+  tab(activeTab,false);
 }
 
 
-/* =========================================================
+/* =========================
    TABS
-   ========================================================= */
+========================= */
 
 function tab(x,scroll=true){
-
   activeTab=x;
 
   [
@@ -1105,32 +1104,28 @@ function tab(x,scroll=true){
     'visual',
     'accuse'
   ].forEach(y=>{
-
-    $(y).classList.toggle(
+    $(y)?.classList.toggle(
       'hide',
       y!==x
     );
-
   });
-
 
   document
     .querySelectorAll('#tabs button')
     .forEach(b=>{
-
       b.classList.toggle(
         'active',
         b.dataset.tab===x
       );
-
     });
 
-
   if(
-    scroll&&
+    scroll
+    &&
     innerWidth<720
+    &&
+    $('tabs')
   ){
-
     $('tabs').scrollIntoView({
       behavior:'smooth',
       block:'start'
@@ -1139,31 +1134,24 @@ function tab(x,scroll=true){
 }
 
 
-/* =========================================================
+/* =========================
    ACTIONS
-   ========================================================= */
+========================= */
 
 function prefill(x){
-
   activeTab='act';
 
   tab('act');
 
   setTimeout(()=>{
-
     if($('free')){
-
       $('free').value=x;
-
       $('free').focus();
     }
-
   },0);
 }
 
-
 function send(){
-
   const x=
     $('free')?.value.trim();
 
@@ -1189,12 +1177,11 @@ function send(){
 }
 
 
-/* =========================================================
+/* =========================
    QUESTIONS
-   ========================================================= */
+========================= */
 
 function askSelected(){
-
   const target=
     $('qTarget')?.value;
 
@@ -1202,7 +1189,6 @@ function askSelected(){
     $('qInput')?.value.trim();
 
   if(!target||!q){
-
     return toast(
       'Choose a person and write a question.'
     );
@@ -1222,35 +1208,24 @@ function askSelected(){
   );
 }
 
-
 function askPreset(kind){
-
-  const el=
-    $('qInput');
+  const el=$('qInput');
 
   if(el){
-
     el.value=
       kind==='where'
         ?'Where were you during the critical period?'
         :'What did you personally see, hear, or notice near the critical period?';
-
-    el.focus();
   }
 }
 
-
 function answerQuestion(){
-
   if(!incomingQ)return;
 
   const a=
-    $('answerInput')
-      .value
-      .trim();
+    $('answerInput')?.value.trim();
 
   if(!a){
-
     return toast(
       'Write an answer first.'
     );
@@ -1259,77 +1234,65 @@ function answerQuestion(){
   sock.emit(
     'answerQuestion',
     {
-      questionId:
-        incomingQ.questionId,
-
+      questionId:incomingQ.questionId,
       answer:a
     }
   );
 
   closeQuestion();
 
-  toast(
-    'Answer sent.'
-  );
+  toast('Answer sent.');
 }
 
-
 function closeQuestion(){
-
-  $('questionModal')
-    .classList
-    .add('hide');
-
+  $('questionModal')?.classList.add('hide');
   incomingQ=null;
 }
 
 
-/* =========================================================
+/* =========================
    INVESTIGATION
-   ========================================================= */
+========================= */
 
 function investPrompt(mode){
-
   const target=
-    $('investTarget')
-      ?.value
-      .trim();
+    $('investTarget')?.value.trim();
 
   if(!target){
-
     return toast(
       'Enter something to investigate.'
     );
   }
 
-
   if(mode==='question'){
-
     tab('question');
 
-    const match=
-      [...$('qTarget').options]
-        .find(
-          o=>o.textContent
-            .toLowerCase()
-            .startsWith(
-              target.toLowerCase()
-            )
-        );
+    const select=$('qTarget');
 
-    if(match){
-      $('qTarget').value=
-        match.value;
+    if(select){
+      const match=
+        [...select.options]
+          .find(
+            o=>o.textContent
+              .toLowerCase()
+              .startsWith(
+                target.toLowerCase()
+              )
+          );
+
+      if(match){
+        select.value=
+          match.value;
+      }
     }
 
-    $('qInput').value=
-      `What do you remember about ${target}?`;
-
-    $('qInput').focus();
+    if($('qInput')){
+      $('qInput').value=
+        `What do you remember about ${target}?`;
+    }
 
     return;
   }
-
 
   setBusy(
     true,
@@ -1346,18 +1309,16 @@ function investPrompt(mode){
 }
 
 
-/* =========================================================
+/* =========================
    ACCUSATION
-   ========================================================= */
+========================= */
 
 function accuse(id,name){
-
   if(
     confirm(
       `Accuse ${name}? This is public and cannot be taken lightly.`
     )
   ){
-
     setBusy(
       true,
       'Recording accusation…'
@@ -1373,12 +1334,11 @@ function accuse(id,name){
 }
 
 
-/* =========================================================
+/* =========================
    VISUAL EVIDENCE
-   ========================================================= */
+========================= */
 
 function visual(type){
-
   setBusy(
     true,
     type==='cctv'
@@ -1397,33 +1357,39 @@ function visual(type){
     }
   );
 
+  /*
+    Safety timeout.
 
+    If visual generation somehow fails to respond,
+    don't leave the player trapped forever.
+  */
   setTimeout(()=>{
-
     if(busy){
       setBusy(false);
-    }
 
+      toast(
+        'Visual request timed out. The case can continue.'
+      );
+    }
   },30000);
 }
 
-
 function showVisual(d){
+  setBusy(false);
 
   const box=
     $('visualbox');
 
   if(box){
-
     box.innerHTML=`
-
       <img
         src="${d.image}"
         alt="${esc(d.title)}"
       >
 
       <div class="overlay">
-        ${esc(d.title)}<br>
+        ${esc(d.title)}
+        <br>
         ${esc(d.description)}
       </div>
 
@@ -1435,12 +1401,11 @@ function showVisual(d){
 }
 
 
-/* =========================================================
+/* =========================
    CHAT
-   ========================================================= */
+========================= */
 
 function addChat(name,text){
-
   const d=
     document.createElement('div');
 
@@ -1451,25 +1416,21 @@ function addChat(name,text){
     <p>${esc(text)}</p>
   `;
 
-  $('chat')
-    .appendChild(d);
+  $('chat')?.appendChild(d);
 
-  $('chat').scrollTop=
-    $('chat').scrollHeight;
+  if($('chat')){
+    $('chat').scrollTop=
+      $('chat').scrollHeight;
+  }
 }
 
-
 function sendChat(e){
-
   e.preventDefault();
 
   const x=
-    $('chatin')
-      .value
-      .trim();
+    $('chatin')?.value.trim();
 
   if(x){
-
     sock.emit(
       'chat',
       {
@@ -1482,44 +1443,39 @@ function sendChat(e){
 }
 
 
-/* =========================================================
+/* =========================
    KEYBOARD
-   ========================================================= */
+========================= */
 
 document.addEventListener(
   'keydown',
   e=>{
-
     if(e.key==='Escape'){
-
       closeModal();
       closeQuestion();
       closeAbout();
-
-      if(!$('singleSetup')?.classList.contains('hide')){
-        show('landing');
-      }
     }
-
 
     if(
-      e.key==='Enter'&&
-      !e.shiftKey&&
-      !$('modal').classList.contains('hide')&&
+      e.key==='Enter'
+      &&
+      !e.shiftKey
+      &&
+      $('modal')
+      &&
+      !$('modal').classList.contains('hide')
+      &&
       document.activeElement?.id!=='chatin'
     ){
-
       e.preventDefault();
-
       submitSetup();
     }
-
   }
 );
 
 
-/* =========================================================
-   START
-   ========================================================= */
+/* =========================
+   INITIAL SCREEN
+========================= */
 
 show('landing');
