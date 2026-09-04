@@ -624,13 +624,6 @@ function render(){
       `${S.people.filter(p=>p.alive).length} ALIVE`;
   }
 
-  if($('modeStat')){
-    $('modeStat').textContent=
-      window.NOCTURNE_MODE==="SINGLE_PLAYER"
-        ?'SINGLE PLAYER'
-        :'MULTIPLAYER';
-  }
-
   if($('mode')){
     $('mode').textContent=
       window.NOCTURNE_MODE==="SINGLE_PLAYER"
