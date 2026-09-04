@@ -1037,3 +1037,61 @@ input::placeholder,textarea::placeholder{color:#68727f}
   .msg p{font-size:14px}
   .modalCard h2{font-size:27px}
 }
+
+
+/* =========================================================
+   NOCTURNE UI FIXES
+   ========================================================= */
+
+/* CASE FEED "LATEST" button must look like a NOCTURNE control,
+   not the browser's default white button. */
+#events + *{}
+.feed .tiny{
+  border:1px solid var(--line2);
+  border-radius:7px;
+  padding:7px 10px;
+  background:#151a21;
+  color:#cbd2da;
+  font-family:"IBM Plex Mono",monospace;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.04em;
+  line-height:1;
+}
+.feed .tiny:hover{
+  border-color:var(--accent);
+  color:var(--accent);
+  background:#11161c;
+}
+
+/* Keep the landing CASE ENGINE display visually centered in the
+   open right-hand area instead of letting it drift into the edge. */
+@media(min-width:1060px){
+  .hero .orb{
+    right:2%;
+    top:50%;
+    bottom:auto;
+    transform:translateY(-50%);
+  }
+}
+
+/* Make section headings consistent and deliberate. */
+.panelTitle h3,
+.guide>h3,
+.tips>h3{
+  color:#e9edf2;
+  font-weight:600;
+}
+
+@media(max-width:760px){
+  .hero .orb{display:none}
+}
+
+/* Prevent the people/location list from feeling visually cramped. */
+.person span,.loc span{
+  color:#98a2ae;
+}
+
+.person>b,.loc>b{
+  letter-spacing:-.01em;
+}
