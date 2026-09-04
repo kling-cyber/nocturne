@@ -1835,3 +1835,127 @@ body{
     font-size:15px;
   }
 }
+
+/* =========================================================
+   LOCATIONS PANEL ALIGNMENT
+   Match the PEOPLE panel structure exactly.
+   The HTML uses:
+     <div class="panel">
+       <h3>LOCATIONS</h3>
+       <div id="locations" class="scrollList">...</div>
+     </div>
+   ========================================================= */
+
+/* The Locations wrapper is a normal .panel, so target the panel
+   that actually contains #locations. */
+.panel:has(> #locations){
+  overflow:hidden;
+}
+
+/* Make LOCATIONS use the same header geometry as PEOPLE's .panelTitle. */
+.panel:has(> #locations) > h3{
+  display:block;
+  box-sizing:border-box;
+
+  width:100%;
+  margin:0;
+  padding:17px 19px;
+
+  border-bottom:1px solid var(--line);
+
+  color:#e9edf2;
+  font-family:"IBM Plex Mono",monospace;
+  font-size:12px;
+  font-weight:600;
+  line-height:1.2;
+  letter-spacing:.11em;
+}
+
+/* The location list itself should use the exact same scroll behavior
+   and width as the People list. */
+.panel:has(> #locations) > #locations{
+  display:block;
+  width:100%;
+  max-height:300px;
+
+  box-sizing:border-box;
+
+  overflow-y:auto;
+  overflow-x:hidden;
+
+  padding:7px 0;
+}
+
+/* Use the existing shared .loc geometry. These overrides only ensure
+   Locations does not inherit a different experimental spacing rule. */
+.panel:has(> #locations) > #locations .loc{
+  box-sizing:border-box;
+  width:100%;
+  padding:14px 17px;
+  margin:0;
+
+  border-bottom:1px solid rgba(255,255,255,.055);
+}
+
+.panel:has(> #locations) > #locations .loc:last-child{
+  border-bottom:0;
+}
+
+.panel:has(> #locations) > #locations .loc > b{
+  display:flex;
+  align-items:center;
+  gap:8px;
+
+  margin:4px 0;
+
+  color:#fff;
+  font-size:17px;
+  line-height:1.35;
+  font-weight:700;
+}
+
+.panel:has(> #locations) > #locations .loc > span{
+  display:block;
+
+  color:#98a2ae;
+  font-family:"IBM Plex Mono",monospace;
+  font-size:11px;
+  line-height:1.45;
+  letter-spacing:.025em;
+}
+
+/* Match the People scrollbar. */
+.panel:has(> #locations) > #locations::-webkit-scrollbar{
+  width:10px;
+}
+
+.panel:has(> #locations) > #locations::-webkit-scrollbar-track{
+  background:#080a0d;
+  border-left:1px solid var(--line);
+}
+
+.panel:has(> #locations) > #locations::-webkit-scrollbar-thumb{
+  background:#6f747b;
+  border-radius:8px;
+  border:2px solid #080a0d;
+}
+
+.panel:has(> #locations) > #locations::-webkit-scrollbar-thumb:hover{
+  background:#90969d;
+}
+
+/* Keep both panels visually identical on smaller screens. */
+@media(max-width:480px){
+  .panel:has(> #locations) > h3{
+    padding:17px 19px;
+    font-size:12px;
+  }
+
+  .panel:has(> #locations) > #locations .loc{
+    padding:14px 17px;
+  }
+
+  .panel:has(> #locations) > #locations .loc > b{
+    font-size:16px;
+  }
+}
