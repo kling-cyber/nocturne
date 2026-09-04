@@ -7,7 +7,6 @@ let setupMode="create";
 let activeTab="act";
 let busy=false;
 let incomingQ=null;
-let lastVisual=null;
 
 window.NOCTURNE_MODE="MULTIPLAYER";
 window.NOCTURNE_DIFFICULTY="";
@@ -245,6 +244,11 @@ function currentPlayerId(){
     ||null;
 }
 
+
+/* =========================
+   SOCKET CONNECTION
+========================= */
+
 sock.on('connect',()=>{
   if($('conn')){
     $('conn').textContent='ONLINE';
@@ -274,6 +278,11 @@ sock.on('connect_error',error=>{
 
   toast('Unable to connect to the NOCTURNE server.');
 });
+
+
+/* =========================
+   ROOM / CASE EVENTS
+========================= */
 
 sock.on('roomJoined',d=>{
   setBusy(false);
@@ -366,6 +375,23 @@ sock.on('privateState',d=>{
   renderPrivate();
 });
 
+
+/*
+ IMPORTANT FIX:
+
+ The server sends stateUpdate after a player action.
+
+ The old frontend updated S and rendered the game,
+ but forgot to call setBusy(false).
+
+ That caused the permanent:
+
+ "Resolving action and NPC reactions..."
+
+ overlay.
+
+ Now every state update clears the loading state.
+*/
 sock.on('stateUpdate',d=>{
   setBusy(false);
 
@@ -390,9 +416,7 @@ sock.on('chat',d=>{
 
 sock.on('visualReady',d=>{
   setBusy(false);
-  lastVisual=d;
   showVisual(d);
-  renderQuickVisual();
 });
 
 sock.on('incomingQuestion',d=>{
@@ -438,6 +462,11 @@ sock.on('questionAnswer',d=>{
 
   tab('evidence');
 });
+
+
+/* =========================
+   PRIVATE PLAYER STATE
+========================= */
 
 function renderPrivate(){
   if(!me)return;
@@ -487,6 +516,13 @@ function renderPrivate(){
         :'';
   }
 
+  /*
+    Multiplayer:
+    Human Killer gets the critical decision button.
+
+    Single Player:
+    Human is never the Killer, so this remains hidden.
+  */
   if(
     window.NOCTURNE_MODE!=="SINGLE_PLAYER"
     &&
@@ -516,50 +552,10 @@ function killerDecision(){
   sock.emit('killerDecision');
 }
 
-function renderQuickVisual(){
-  const box=$('quickVisual');
-  if(!box || !S)return;
 
-  const latest=
-    lastVisual
-    ||S.evidence?.slice().reverse().find(e=>e.type==='visual'&&e.image)
-    ||null;
-
-  if(latest?.image){
-    box.innerHTML=`
-      <div class="quickVisualFrame hasImage">
-        <img src="${latest.image}" alt="${esc(latest.title||'Live case visual evidence')}">
-        <div class="quickVisualHud">
-          <span>${esc(latest.title||'CASE VISUAL')}</span>
-          <b>LIVE EVIDENCE</b>
-        </div>
-        <div class="quickVisualScan"></div>
-      </div>
-      <p>${esc(latest.description||'Visual evidence from the current case state.')}</p>
-      <div class="quickVisualBtns">
-        <button class="secondary" onclick="visual('cctv')">NEW CCTV</button>
-        <button class="secondary" onclick="visual('photo')">NEW PHOTO</button>
-      </div>
-    `;
-    return;
-  }
-
-  box.innerHTML=`
-    <div class="quickVisualFrame">
-      <div class="quickVisualGrid"></div>
-      <div class="quickVisualReticle"></div>
-      <div class="quickVisualLabel">
-        <span>CAM-01 · ${esc(S.clock||'--:--')}</span>
-        <b>STANDBY</b>
-      </div>
-    </div>
-    <p>No visual has been requested yet. Pull a live CCTV still or scene photograph from the current investigation.</p>
-    <div class="quickVisualBtns">
-      <button class="secondary" onclick="visual('cctv')">CCTV</button>
-      <button class="secondary" onclick="visual('photo')">SCENE PHOTO</button>
-    </div>
-  `;
-}
+/* =========================
+   MAIN GAME RENDER
+========================= */
 
 function render(){
   if(!S)return;
@@ -635,6 +631,9 @@ function render(){
         :'MULTIPLAYER';
   }
 
+
+  /* PEOPLE */
+
   if($('people')){
     $('people').innerHTML=
       S.people.map(p=>`
@@ -672,6 +671,9 @@ function render(){
       `).join('');
   }
 
+
+  /* LOCATIONS */
+
   if($('locations')){
     $('locations').innerHTML=
       S.world.areas.map(x=>`
@@ -693,6 +695,9 @@ function render(){
       `).join('');
   }
 
+
+  /* EVENTS / LIVE CASE FEED */
+
   if($('events')){
     $('events').innerHTML=
       S.events
@@ -700,19 +705,18 @@ function render(){
         .reverse()
         .map(e=>`
           <div class="event ${esc(e.type)}">
+
             <small>
-              <span class="eventLiveDot"></span>
               ${esc(e.time)} · ${esc(e.type)}
             </small>
 
             <p>
               ${esc(e.text)}
             </p>
+
           </div>
         `)
         .join('');
-
-    $('events').scrollTop=0;
   }
 
   if($('eventCount')){
@@ -729,9 +733,13 @@ function render(){
 
   renderPrivate();
 
+
+  /* ACTIONS */
+
   if($('act')){
     $('act').innerHTML=`
       <div class="action-grid">
+
         ${
           [
             ['Talk','Talk to someone nearby'],
@@ -752,9 +760,11 @@ function render(){
           `)
           .join('')
         }
+
       </div>
 
       <div class="composer">
+
         <input
           id="free"
           maxlength="600"
@@ -768,9 +778,13 @@ function render(){
         >
           DO ACTION
         </button>
+
       </div>
     `;
   }
+
+
+  /* INVESTIGATION */
 
   if($('invest')){
     $('invest').innerHTML=`
@@ -807,6 +821,9 @@ function render(){
       </div>
     `;
   }
+
+
+  /* EVIDENCE */
 
   if($('evidence')){
     $('evidence').innerHTML=
@@ -871,7 +888,8 @@ function render(){
         `;
   }
 
-  renderQuickVisual();
+
+  /* VISUAL EVIDENCE */
 
   if($('visual')){
     $('visual').innerHTML=`
@@ -881,6 +899,7 @@ function render(){
           class="visualbox"
           id="visualbox"
         >
+
           <div class="overlay">
             CASE EVIDENCE NETWORK
             <br>
@@ -890,6 +909,7 @@ function render(){
           </div>
 
           <div class="scan"></div>
+
         </div>
 
         <p>
@@ -919,6 +939,9 @@ function render(){
       </div>
     `;
   }
+
+
+  /* QUESTIONS */
 
   const targets=
     S.people.filter(
@@ -998,6 +1021,9 @@ function render(){
     `;
   }
 
+
+  /* ACCUSATION */
+
   const suspects=
     S.people.filter(
       p=>p.alive&&p.id!==currentPlayerId()
@@ -1023,13 +1049,17 @@ function render(){
                 '${js(p.name)}'
               )"
             >
-              <b>${esc(p.name)}</b>
+
+              <b>
+                ${esc(p.name)}
+              </b>
 
               <p>
                 Public suspicion
                 ${p.suspicion}%
                 · accuse this person
               </p>
+
             </div>
           `).join('')
         }
@@ -1037,6 +1067,9 @@ function render(){
       </div>
     `;
   }
+
+
+  /* RESTORE INPUT VALUES */
 
   if($('investTarget')){
     $('investTarget').value=
@@ -1062,6 +1095,11 @@ function render(){
 
   tab(activeTab,false);
 }
+
+
+/* =========================
+   TABS
+========================= */
 
 function tab(x,scroll=true){
   activeTab=x;
@@ -1103,6 +1141,11 @@ function tab(x,scroll=true){
   }
 }
 
+
+/* =========================
+   ACTIONS
+========================= */
+
 function prefill(x){
   activeTab='act';
 
@@ -1116,18 +1159,31 @@ function prefill(x){
   },0);
 }
 
+
+/*
+  Adds a temporary LIVE entry immediately when
+  the player performs an action.
+
+  The authoritative server event will replace it
+  when stateUpdate arrives.
+*/
 function addLiveFeedEntry(text){
   const events=$('events');
+
   if(!events)return;
 
   const node=document.createElement('div');
+
   node.className='event LIVE';
+
   node.innerHTML=`
     <small>
-      <span class="eventLiveDot live"></span>
       ${esc(S?.clock||'--:--')} · LIVE
     </small>
-    <p>${esc(text)}</p>
+
+    <p>
+      ${esc(text)}
+    </p>
   `;
 
   events.prepend(node);
@@ -1135,9 +1191,12 @@ function addLiveFeedEntry(text){
   while(
     events.querySelectorAll('.event.LIVE').length>4
   ){
-    events.querySelector('.event.LIVE:last-child')?.remove();
+    events
+      .querySelector('.event.LIVE:last-child')
+      ?.remove();
   }
 }
+
 
 function send(){
   const x=
@@ -1151,6 +1210,10 @@ function send(){
 
   $('free').value='';
 
+  /*
+    Immediately show the player's action in the
+    Case Feed with the current simulation timestamp.
+  */
   addLiveFeedEntry(
     `ACTION QUEUED · ${x}`
   );
@@ -1167,6 +1230,11 @@ function send(){
     }
   );
 }
+
+
+/* =========================
+   QUESTIONS
+========================= */
 
 function askSelected(){
   const target=
@@ -1236,6 +1304,11 @@ function closeQuestion(){
   incomingQ=null;
 }
 
+
+/* =========================
+   INVESTIGATION
+========================= */
+
 function investPrompt(mode){
   const target=
     $('investTarget')?.value.trim();
@@ -1290,6 +1363,11 @@ function investPrompt(mode){
   );
 }
 
+
+/* =========================
+   ACCUSATION
+========================= */
+
 function accuse(id,name){
   if(
     confirm(
@@ -1310,6 +1388,11 @@ function accuse(id,name){
   }
 }
 
+
+/* =========================
+   VISUAL EVIDENCE
+========================= */
+
 function visual(type){
   setBusy(
     true,
@@ -1329,6 +1412,12 @@ function visual(type){
     }
   );
 
+  /*
+    Safety timeout.
+
+    If visual generation somehow fails to respond,
+    don't leave the player trapped forever.
+  */
   setTimeout(()=>{
     if(busy){
       setBusy(false);
@@ -1365,6 +1454,11 @@ function showVisual(d){
 
   tab('visual');
 }
+
+
+/* =========================
+   CHAT
+========================= */
 
 function addChat(name,text){
   const d=
@@ -1403,6 +1497,11 @@ function sendChat(e){
   }
 }
 
+
+/* =========================
+   KEYBOARD
+========================= */
+
 document.addEventListener(
   'keydown',
   e=>{
@@ -1428,5 +1527,10 @@ document.addEventListener(
     }
   }
 );
+
+
+/* =========================
+   INITIAL SCREEN
+========================= */
 
 show('landing');
