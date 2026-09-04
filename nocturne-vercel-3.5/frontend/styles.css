@@ -1095,345 +1095,136 @@ input::placeholder,textarea::placeholder{color:#68727f}
 .person>b,.loc>b{
   letter-spacing:-.01em;
 }
-
 /* =========================================================
-   NOCTURNE LIVE CASE LAYOUT
-   Symmetrical rail + live feed + visual evidence
+   FINAL GAME DASHBOARD ALIGNMENT
+   Scoped to the game screen only.
+   Landing/index sizing is intentionally untouched.
    ========================================================= */
 
-@media(min-width:1051px){
-  .grid{
-    grid-template-columns:260px minmax(520px,1fr) 340px;
-    gap:18px;
-  }
-
-  .grid>aside,
-  .grid>article{
-    min-width:0;
-  }
-
-  #leftSide,
-  #rightSide,
-  .grid>article{
-    display:flex;
-    flex-direction:column;
-    gap:16px;
-  }
-
-  .grid .panel{
-    margin-bottom:0;
-  }
-
-  /* The three columns now feel like one dashboard instead of three
-     unrelated stacks. */
-  #leftSide .panel,
-  #rightSide .panel,
-  .grid>article .panel{
-    width:100%;
-  }
-
-  /* People and Locations share the same visual list treatment. */
-  #leftSide .scrollList{
-    max-height:290px;
-    overflow-y:auto;
-    overflow-x:hidden;
-  }
-
-  #leftSide .panel:has(#locations) .scrollList{
-    max-height:290px;
-  }
-
-  /* Case feed is the main live timeline. */
-  .feed{
-    min-height:320px;
-  }
-
-  #events{
-    height:320px;
-    max-height:320px;
-    overflow-y:auto;
-    overflow-x:hidden;
-    scrollbar-width:thin;
-    scrollbar-color:#59616b #080a0d;
-  }
-
-  /* Actions occupy the larger central workspace. */
-  .actions{
-    min-height:500px;
-  }
-
-  /* Right rail gets real content rather than a lonely paragraph. */
-  .chat{
-    height:330px;
-  }
-
-  #chat{
-    height:250px;
-  }
-
-  .quickVisualPanel{
-    min-height:315px;
-  }
-
-  .tips{
-    min-height:150px;
-  }
+/* Keep the original three-column game proportions. */
+#game .grid{
+  grid-template-columns:250px minmax(430px,1fr) 330px;
+  gap:16px;
+  align-items:start;
 }
 
-/* One scrollbar language across all NOCTURNE scroll areas. */
-.scrollList,
-#events,
-#chat,
-#tabs{
+/* People and Locations use the same internal scrolling model. */
+#game #people,
+#game #locations{
+  max-height:300px;
+  overflow-y:auto;
+  overflow-x:hidden;
   scrollbar-width:thin;
   scrollbar-color:#59616b #080a0d;
 }
 
-.scrollList::-webkit-scrollbar,
-#events::-webkit-scrollbar,
-#chat::-webkit-scrollbar,
-#tabs::-webkit-scrollbar{
-  width:7px;
-  height:7px;
+/* Case feed has its own readable timeline scroll. */
+#game #events{
+  max-height:620px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  scrollbar-width:thin;
+  scrollbar-color:#59616b #080a0d;
 }
 
-.scrollList::-webkit-scrollbar-track,
-#events::-webkit-scrollbar-track,
-#chat::-webkit-scrollbar-track,
-#tabs::-webkit-scrollbar-track{
+/* Public communications keeps scrolling inside its own panel. */
+#game #chat{
+  height:430px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  scrollbar-width:thin;
+  scrollbar-color:#59616b #080a0d;
+}
+
+/* One understated scrollbar language across the game dashboard. */
+#game #people::-webkit-scrollbar,
+#game #locations::-webkit-scrollbar,
+#game #events::-webkit-scrollbar,
+#game #chat::-webkit-scrollbar{
+  width:7px;
+}
+
+#game #people::-webkit-scrollbar-track,
+#game #locations::-webkit-scrollbar-track,
+#game #events::-webkit-scrollbar-track,
+#game #chat::-webkit-scrollbar-track{
   background:#080a0d;
 }
 
-.scrollList::-webkit-scrollbar-thumb,
-#events::-webkit-scrollbar-thumb,
-#chat::-webkit-scrollbar-thumb,
-#tabs::-webkit-scrollbar-thumb{
+#game #people::-webkit-scrollbar-thumb,
+#game #locations::-webkit-scrollbar-thumb,
+#game #events::-webkit-scrollbar-thumb,
+#game #chat::-webkit-scrollbar-thumb{
   background:#59616b;
   border-radius:999px;
   border:1px solid #080a0d;
 }
 
-.scrollList::-webkit-scrollbar-thumb:hover,
-#events::-webkit-scrollbar-thumb:hover,
-#chat::-webkit-scrollbar-thumb:hover,
-#tabs::-webkit-scrollbar-thumb:hover{
+#game #people::-webkit-scrollbar-thumb:hover,
+#game #locations::-webkit-scrollbar-thumb:hover,
+#game #events::-webkit-scrollbar-thumb:hover,
+#game #chat::-webkit-scrollbar-thumb:hover{
   background:#7b838d;
 }
 
-/* Live feed details */
-.event small{
-  display:flex;
-  align-items:center;
-  gap:7px;
-}
-
-.eventLiveDot{
+/* Live-feed marker. It does not alter event spacing. */
+#game .eventLiveDot{
+  display:inline-block;
   width:5px;
   height:5px;
-  flex:0 0 5px;
+  margin-right:6px;
+  vertical-align:middle;
   border-radius:50%;
-  background:#66717d;
+  background:#59636f;
 }
 
-.eventLiveDot.live{
+#game .eventLiveDot.live{
   background:var(--accent);
   box-shadow:0 0 8px rgba(217,255,98,.65);
-  animation:eventPulse 1.5s ease-in-out infinite;
+  animation:finalEventPulse 1.5s ease-in-out infinite;
 }
 
-.event.LIVE{
+#game .event.LIVE{
   border-left-color:var(--accent);
   background:rgba(217,255,98,.025);
 }
 
-.event.LIVE p{
+#game .event.LIVE p{
   color:#e8f0df;
 }
 
-@keyframes eventPulse{
+@keyframes finalEventPulse{
   0%,100%{opacity:.45;transform:scale(.8)}
   50%{opacity:1;transform:scale(1.15)}
 }
 
-/* =========================================================
-   LIVE VISUAL EVIDENCE CARD
-   ========================================================= */
-
-.quickVisual{
-  padding:14px;
-}
-
-.quickVisualFrame{
-  position:relative;
-  height:185px;
-  overflow:hidden;
-  border:1px solid var(--line2);
-  border-radius:9px;
-  background:
-    radial-gradient(circle at 50% 48%,rgba(217,255,98,.08),transparent 35%),
-    linear-gradient(145deg,#10151b,#07090c);
-}
-
-.quickVisualFrame.hasImage img{
-  display:block;
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  filter:saturate(.72) contrast(1.05) brightness(.72);
-}
-
-.quickVisualGrid{
-  position:absolute;
-  inset:0;
-  background:
-    linear-gradient(rgba(217,255,98,.045) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(217,255,98,.045) 1px,transparent 1px);
-  background-size:28px 28px;
-  opacity:.5;
-}
-
-.quickVisualReticle{
-  position:absolute;
-  left:50%;
-  top:50%;
-  width:72px;
-  height:72px;
-  transform:translate(-50%,-50%);
-  border:1px solid rgba(217,255,98,.42);
-  border-radius:50%;
-  box-shadow:
-    0 0 15px rgba(217,255,98,.08),
-    inset 0 0 15px rgba(217,255,98,.05);
-}
-
-.quickVisualReticle::before,
-.quickVisualReticle::after{
-  content:"";
-  position:absolute;
-  background:rgba(217,255,98,.36);
-}
-
-.quickVisualReticle::before{
-  left:50%;
-  top:-18px;
-  bottom:-18px;
-  width:1px;
-}
-
-.quickVisualReticle::after{
-  top:50%;
-  left:-18px;
-  right:-18px;
-  height:1px;
-}
-
-.quickVisualLabel,
-.quickVisualHud{
-  position:absolute;
-  left:10px;
-  right:10px;
-  top:9px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  color:#aeb8ae;
-  font-family:"IBM Plex Mono",monospace;
-  font-size:8px;
-  letter-spacing:.06em;
-}
-
-.quickVisualLabel b,
-.quickVisualHud b{
-  color:var(--accent);
-}
-
-.quickVisualHud{
-  bottom:9px;
-  top:auto;
-  padding:7px 8px;
-  background:rgba(3,5,6,.72);
-  border:1px solid rgba(217,255,98,.15);
-  border-radius:6px;
-}
-
-.quickVisualScan{
-  position:absolute;
-  left:0;
-  right:0;
-  height:1px;
-  top:25%;
-  background:rgba(217,255,98,.58);
-  box-shadow:0 0 9px rgba(217,255,98,.45);
-  animation:quickScan 3.2s linear infinite;
-}
-
-@keyframes quickScan{
-  0%{top:10%;opacity:0}
-  10%{opacity:.8}
-  50%{opacity:.5}
-  90%{opacity:.8}
-  100%{top:92%;opacity:0}
-}
-
-.quickVisual>p{
-  margin:10px 0 11px;
-  color:#9fa9b4;
-  font-size:12px;
-  line-height:1.5;
-}
-
-.quickVisualBtns{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:7px;
-}
-
-.quickVisualBtns button{
-  padding:9px 8px;
-  font-family:"IBM Plex Mono",monospace;
-  font-size:9px;
-  letter-spacing:.035em;
-}
-
-/* On smaller screens, keep the dashboard readable rather than stacking
-   three narrow columns with competing scrollbars. */
+/* Keep the game columns balanced at medium desktop widths. */
 @media(max-width:1050px){
-  .grid{
+  #game .grid{
     grid-template-columns:220px minmax(0,1fr);
   }
 
-  #rightSide{
+  #game #rightSide{
     grid-column:1/-1;
-    display:grid;
-    grid-template-columns:1.3fr 1fr 1fr;
-    gap:16px;
-  }
-
-  .chat{
-    height:360px;
-  }
-
-  #chat{
-    height:280px;
   }
 }
 
+/* Mobile behavior remains the original NOCTURNE layout. */
 @media(max-width:760px){
-  #rightSide{
+  #game .grid{
     display:block;
   }
 
-  #rightSide .panel{
-    margin-bottom:16px;
+  #game #people,
+  #game #locations{
+    max-height:300px;
   }
 
-  .quickVisualFrame{
-    height:220px;
-  }
-
-  #events{
+  #game #events{
     max-height:420px;
   }
-}
 
+  #game #chat{
+    height:260px;
+  }
+}
