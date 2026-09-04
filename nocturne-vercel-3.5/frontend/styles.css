@@ -147,20 +147,11 @@ h2{line-height:1.05}
 .wide{width:100%}
 
 /* LANDING */
-#landing{
-  min-height:calc(100vh - 78px);
-  display:grid;
-  place-items:center;
-  text-align:center;
-}
+#landing{min-height:calc(100vh - 78px);display:grid;place-items:center}
 .hero{
   position:relative;
-  width:min(1220px,100%);
-  padding:55px 180px 65px;
-  margin:0 auto;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
+  width:min(1080px,100%);
+  padding:90px 0 80px;
 }
 .hero>small{
   color:var(--accent);
@@ -170,28 +161,19 @@ h2{line-height:1.05}
 }
 .hero h1{
   max-width:900px;
-  margin:22px auto 25px;
-  font-size:clamp(52px,6.8vw,88px);
+  margin:20px 0 25px;
+  font-size:clamp(54px,8vw,104px);
   line-height:.94;
   letter-spacing:-.055em;
 }
 .hero h1 em{color:var(--soft);font-style:normal}
 .hero>p{
-  max-width:720px;
-  margin-left:auto;
-  margin-right:auto;
+  max-width:710px;
   color:var(--muted);
   font-size:19px;
   line-height:1.7;
 }
-.heroBtns{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  flex-wrap:wrap;
-  gap:12px;
-  margin:34px 0 22px;
-}
+.heroBtns{display:flex;flex-wrap:wrap;gap:12px;margin:34px 0 22px}
 .primary,.secondary{
   border-radius:9px;
   padding:12px 17px;
@@ -214,13 +196,7 @@ h2{line-height:1.05}
 }
 .secondary:hover{border-color:#66717f;transform:translateY(-1px)}
 .big{padding:15px 20px;font-size:13px}
-.chips{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  flex-wrap:wrap;
-  gap:8px;
-}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
 .chips span{
   padding:7px 11px;
   border:1px solid var(--line);
@@ -231,58 +207,18 @@ h2{line-height:1.05}
 }
 .orb{
   position:absolute;
-  right:2%;
-  top:54%;
-  transform:translateY(-50%);
-  width:170px;
-  height:170px;
-  display:grid;
-  place-items:center;
+  right:-2%;
+  bottom:3%;
+  width:180px;height:180px;
+  display:grid;place-items:center;
   border:1px solid rgba(217,255,98,.22);
   border-radius:50%;
-  background:
-    radial-gradient(circle at center,
-      rgba(217,255,98,.075),
-      rgba(217,255,98,.018) 48%,
-      transparent 70%);
+  background:radial-gradient(circle,rgba(217,255,98,.08),transparent 65%);
   text-align:center;
-  box-shadow:
-    inset 0 0 35px rgba(217,255,98,.025),
-    0 0 30px rgba(0,0,0,.15);
 }
-.orb:before{
-  content:"";
-  position:absolute;
-  inset:8px;
-  border:1px solid rgba(217,255,98,.07);
-  border-radius:50%;
-}
-.orb div{
-  position:relative;
-  z-index:1;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-}
-.orb span{
-  font-family:"IBM Plex Mono",monospace;
-  font-size:9px;
-  color:var(--muted);
-  letter-spacing:.02em;
-}
-.orb b{
-  font-family:"IBM Plex Mono",monospace;
-  font-size:20px;
-  color:var(--accent);
-  letter-spacing:.08em;
-}
-.orb small{
-  font-family:"IBM Plex Mono",monospace;
-  font-size:9px;
-  color:var(--muted);
-}
+.orb div{display:flex;flex-direction:column;gap:5px}
+.orb span,.orb small{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted)}
+.orb b{font-size:22px;color:var(--accent);letter-spacing:.08em}
 
 /* HEAD / LOBBY / SETUP */
 .head{
@@ -1017,31 +953,10 @@ input::placeholder,textarea::placeholder{color:#68727f}
   .connection i{display:none}
   main{padding:0 14px 50px}
   #landing{min-height:auto}
-  .hero{
-    width:100%;
-    padding:58px 0 55px;
-    align-items:center;
-  }
-  .hero h1{
-    max-width:100%;
-    font-size:clamp(46px,13vw,72px);
-  }
-  .hero>p{
-    font-size:17px;
-    max-width:650px;
-  }
-  .orb{
-    position:relative;
-    right:auto;
-    top:auto;
-    transform:none;
-    width:145px;
-    height:145px;
-    margin:28px auto 0;
-    display:grid;
-  }
-  .orb div{gap:5px}
-  .orb b{font-size:17px}
+  .hero{padding:70px 0 60px}
+  .hero h1{font-size:clamp(48px,14vw,74px)}
+  .hero>p{font-size:17px}
+  .orb{display:none}
   .heroBtns{display:grid;grid-template-columns:1fr}
   .big{width:100%}
   .head{padding:42px 0 23px;display:block}
