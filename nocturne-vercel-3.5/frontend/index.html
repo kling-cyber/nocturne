@@ -5,19 +5,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
 <meta name="theme-color" content="#080a0d">
-<meta name="description" content="NOCTURNE, a living multiplayer murder mystery created and owned by Kavish Koradia.">
+<meta name="description" content="NOCTURNE 4.0, a living multiplayer and single-player murder mystery created and owned by Kavish Koradia.">
 <meta name="author" content="Kavish Koradia">
 <meta name="copyright" content="© 2026 Kavish Koradia">
 <meta name="application-name" content="NOCTURNE">
 
-<meta property="og:title" content="NOCTURNE // Living Mystery">
-<meta property="og:description" content="A living multiplayer murder mystery created by Kavish Koradia.">
+<meta property="og:title" content="NOCTURNE 4.0 // Living Mystery">
+<meta property="og:description" content="A living multiplayer and single-player murder mystery created by Kavish Koradia.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://nocturne-dun-xi.vercel.app">
 
 <link rel="canonical" href="https://nocturne-dun-xi.vercel.app">
 
-<title>NOCTURNE // Living Mystery · Kavish Koradia</title>
+<title>NOCTURNE 4.0 // Living Mystery · Kavish Koradia</title>
 
 <link rel="stylesheet" href="/styles.css">
 </head>
@@ -27,12 +27,14 @@
 <header>
   <div class="brand">
     <b>NOCTURNE</b>
-    <span>LIVE CASE ENGINE · 3.5</span>
+    <span>LIVE CASE ENGINE · 4.0</span>
     <small class="creatorMark">CREATED BY KAVISH KORADIA</small>
   </div>
 
   <div class="headerRight">
-    <button class="aboutBtn" onclick="openAbout()">ABOUT / CREDITS</button>
+    <button class="aboutBtn" onclick="openAbout()">
+      ABOUT / CREDITS
+    </button>
 
     <div class="connection" id="connection">
       <span class="dot"></span>
@@ -41,7 +43,9 @@
   </div>
 </header>
 
+
 <div id="toast" aria-live="polite"></div>
+
 
 <div id="busy" class="hide">
   <div class="busyCard">
@@ -51,12 +55,18 @@
   </div>
 </div>
 
+
 <main>
 
+<!-- =========================================================
+     LANDING
+     ========================================================= -->
+
 <section id="landing">
+
   <div class="hero">
 
-    <small>PROCEDURAL · MULTIPLAYER · AI-ENHANCED</small>
+    <small>PROCEDURAL · MULTIPLAYER · SINGLE PLAYER · AI-ENHANCED</small>
 
     <h1>
       Every crime<br>
@@ -65,38 +75,62 @@
 
     <p>
       A living social deduction mystery where the world keeps moving.
-      One human is secretly the Killer. Everyone else must reconstruct
-      what happened from people, places, contradictions and imperfect evidence.
+      Play with friends against a human Killer, or enter a fully
+      simulated case where the Killer is an autonomous AI character.
     </p>
 
+
     <div class="heroBtns">
-      <button class="primary big" onclick="openSetup('create')">
+
+      <button
+        class="primary big"
+        onclick="openSetup('create')"
+      >
         ＋ CREATE CASE
       </button>
 
-      <button class="secondary big" onclick="openSetup('join')">
+      <button
+        class="secondary big"
+        onclick="openSetup('join')"
+      >
         ↪ JOIN CASE
       </button>
+
+      <button
+        class="secondary big singlePlayerBtn"
+        onclick="openSetup('single')"
+      >
+        ◉ SINGLE PLAYER
+      </button>
+
     </div>
+
 
     <div class="chips">
       <span>♾ Fresh cases</span>
       <span>◉ Autonomous NPCs</span>
       <span>▣ Visual evidence</span>
       <span>⌁ Causal clues</span>
+      <span>◆ AI Killer</span>
     </div>
 
   </div>
+
 
   <div class="orb">
     <div>
       <span>CASE ENGINE</span>
       <b>READY</b>
-      <small>2–8 PLAYERS</small>
+      <small>2–8 PLAYERS · SOLO</small>
     </div>
   </div>
+
 </section>
 
+
+<!-- =========================================================
+     MULTIPLAYER LOBBY
+     ========================================================= -->
 
 <section id="lobby" class="hide">
 
@@ -104,22 +138,35 @@
 
     <div>
       <small>WAITING ROOM</small>
+
       <h2>CASE LOBBY</h2>
+
       <p class="sub">
         Invite friends with the room code.
         The host starts when everyone is ready.
       </p>
     </div>
 
+
     <div class="roomCode">
+
       <small>ROOM CODE</small>
-      <button class="code" id="code" onclick="copyCode()" title="Copy room code">
+
+      <button
+        class="code"
+        id="code"
+        onclick="copyCode()"
+        title="Copy room code"
+      >
         ----
       </button>
+
       <span>Tap to copy</span>
+
     </div>
 
   </div>
+
 
   <div class="cols">
 
@@ -131,6 +178,7 @@
       </div>
 
       <div id="players"></div>
+
 
       <div class="panelFooter">
 
@@ -194,6 +242,210 @@
 </section>
 
 
+<!-- =========================================================
+     SINGLE PLAYER SETUP
+     ========================================================= -->
+
+<section id="singleSetup" class="hide">
+
+  <div class="head">
+
+    <div>
+      <small>SOLO INVESTIGATION</small>
+
+      <h2>SINGLE PLAYER CASE</h2>
+
+      <p class="sub">
+        You are the investigator. Every other character is controlled
+        by the living simulation, including the Killer.
+      </p>
+    </div>
+
+  </div>
+
+
+  <div class="singleSetupGrid">
+
+    <div class="panel">
+
+      <div class="panelTitle">
+        <h3>YOUR INVESTIGATOR</h3>
+        <span>HUMAN</span>
+      </div>
+
+
+      <label>
+        PLAYER NAME
+
+        <input
+          id="singleNameInput"
+          maxlength="24"
+          autocomplete="nickname"
+          placeholder="Your name"
+        >
+      </label>
+
+
+      <label>
+        INVESTIGATOR SPECIALTY
+
+        <select id="singleRoleInput">
+
+          <option value="Lead Detective">
+            Lead Detective
+          </option>
+
+          <option value="Forensic Analyst">
+            Forensic Analyst
+          </option>
+
+          <option value="Behavioral Analyst">
+            Behavioral Analyst
+          </option>
+
+          <option value="Digital Investigator">
+            Digital Investigator
+          </option>
+
+          <option value="Field Investigator">
+            Field Investigator
+          </option>
+
+          <option value="Investigative Journalist">
+            Investigative Journalist
+          </option>
+
+          <option value="Security Specialist">
+            Security Specialist
+          </option>
+
+          <option value="Medical Consultant">
+            Medical Consultant
+          </option>
+
+        </select>
+      </label>
+
+
+      <label>
+        DIFFICULTY
+
+        <select id="difficultyInput">
+
+          <option value="CASUAL">
+            CASUAL
+          </option>
+
+          <option value="DETECTIVE" selected>
+            DETECTIVE
+          </option>
+
+          <option value="EXPERT">
+            EXPERT
+          </option>
+
+          <option value="NOCTURNE">
+            NOCTURNE
+          </option>
+
+        </select>
+      </label>
+
+
+      <button
+        class="primary wide"
+        onclick="startSinglePlayer()"
+      >
+        ◉ ENTER SINGLE PLAYER CASE
+      </button>
+
+
+      <p class="modalHint">
+        The Killer is an autonomous NPC.
+        You will never be told who they are at the beginning.
+      </p>
+
+    </div>
+
+
+    <div class="panel guide">
+
+      <h3>THE SOLO EXPERIENCE</h3>
+
+
+      <div class="step">
+        <b>01</b>
+        <p>
+          <strong>You are the investigator</strong><br>
+          Choose your specialty and approach the case your way.
+        </p>
+      </div>
+
+
+      <div class="step">
+        <b>02</b>
+        <p>
+          <strong>The world thinks for itself</strong><br>
+          NPCs have memories, goals, relationships, secrets and pressure.
+        </p>
+      </div>
+
+
+      <div class="step">
+        <b>03</b>
+        <p>
+          <strong>The Killer is alive</strong><br>
+          The Killer NPC has their own motive, memories,
+          suspicions and self-preservation instincts.
+        </p>
+      </div>
+
+
+      <div class="step">
+        <b>04</b>
+        <p>
+          <strong>No fixed answer path</strong><br>
+          Evidence emerges from what characters actually do,
+          remember and reveal.
+        </p>
+      </div>
+
+
+      <div class="difficultyInfo">
+
+        <div>
+          <strong>CASUAL</strong>
+          <span>More forgiving investigation.</span>
+        </div>
+
+        <div>
+          <strong>DETECTIVE</strong>
+          <span>Balanced investigation.</span>
+        </div>
+
+        <div>
+          <strong>EXPERT</strong>
+          <span>Sharper NPC behavior and fewer easy openings.</span>
+        </div>
+
+        <div>
+          <strong>NOCTURNE</strong>
+          <span>The simulation gives you very little for free.</span>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =========================================================
+     LIVE GAME
+     ========================================================= -->
+
 <section id="game" class="hide">
 
   <div class="casebar">
@@ -203,6 +455,7 @@
       <h2 id="world"></h2>
       <p id="phaseHelp" class="sub"></p>
     </div>
+
 
     <div class="stats">
 
@@ -214,6 +467,11 @@
       <div>
         <small>PHASE</small>
         <b id="phase">SETUP</b>
+      </div>
+
+      <div id="modeStat">
+        <small>MODE</small>
+        <b id="mode">MULTIPLAYER</b>
       </div>
 
     </div>
@@ -314,12 +572,14 @@
             ACT
           </button>
 
+
           <button
             data-tab="invest"
             onclick="tab('invest')"
           >
             INVESTIGATE
           </button>
+
 
           <button
             data-tab="evidence"
@@ -329,6 +589,7 @@
             <span id="evCount"></span>
           </button>
 
+
           <button
             data-tab="question"
             onclick="tab('question')"
@@ -336,12 +597,14 @@
             CALL / QUESTION
           </button>
 
+
           <button
             data-tab="visual"
             onclick="tab('visual')"
           >
             VISUAL EVIDENCE
           </button>
+
 
           <button
             data-tab="accuse"
@@ -375,9 +638,13 @@
       <div class="panel chat">
 
         <div class="panelTitle">
+
           <h3>PUBLIC COMMS</h3>
+
           <span>ALL PLAYERS</span>
+
         </div>
+
 
         <div id="chat">
 
@@ -387,6 +654,7 @@
           </div>
 
         </div>
+
 
         <form onsubmit="sendChat(event)">
 
@@ -426,7 +694,7 @@
 
 
 <!-- =========================================================
-     NOCTURNE OWNERSHIP FOOTER
+     FOOTER
      ========================================================= -->
 
 <footer class="siteFooter">
@@ -449,7 +717,7 @@
     </button>
 
     <span>
-      VERSION 3.5
+      VERSION 4.0
     </span>
 
     <small>
@@ -462,7 +730,7 @@
 
 
 <!-- =========================================================
-     ABOUT / CREDITS PANEL
+     ABOUT / CREDITS
      ========================================================= -->
 
 <div
@@ -495,9 +763,9 @@
       </h2>
 
       <p>
-        A procedural multiplayer murder mystery where every case
-        unfolds through people, places, decisions, memories and
-        imperfect evidence.
+        A procedural multiplayer and single-player murder mystery
+        where every case unfolds through people, places, decisions,
+        memories and imperfect evidence.
       </p>
 
     </div>
@@ -506,8 +774,6 @@
     <div class="aboutGrid">
 
 
-      <!-- VERSION PANEL -->
-
       <div class="aboutPanel versionPanel">
 
         <small>
@@ -515,7 +781,7 @@
         </small>
 
         <strong>
-          NOCTURNE 3.5
+          NOCTURNE 4.0
         </strong>
 
         <span>
@@ -534,8 +800,6 @@
       </div>
 
 
-      <!-- PROJECT PANEL -->
-
       <div class="aboutPanel">
 
         <small>
@@ -547,18 +811,17 @@
         </h3>
 
         <p>
-          Living Multiplayer Murder Mystery
+          Living Multiplayer &amp; Single-Player Murder Mystery
         </p>
 
         <p>
           Procedural cases · Autonomous NPCs ·
-          Multiplayer investigation · Visual evidence
+          Multiplayer investigation · Solo investigation ·
+          Visual evidence
         </p>
 
       </div>
 
-
-      <!-- CREATOR PANEL -->
 
       <div class="aboutPanel">
 
@@ -576,8 +839,6 @@
 
       </div>
 
-
-      <!-- WORK PANEL -->
 
       <div class="aboutPanel">
 
@@ -600,7 +861,15 @@
           </li>
 
           <li>
+            Autonomous AI Killer system
+          </li>
+
+          <li>
             Multiplayer room and investigation systems
+          </li>
+
+          <li>
+            Single-player investigation mode
           </li>
 
           <li>
@@ -615,8 +884,6 @@
 
       </div>
 
-
-      <!-- OWNERSHIP PANEL -->
 
       <div class="aboutPanel">
 
@@ -641,8 +908,6 @@
       </div>
 
 
-      <!-- TECHNOLOGY PANEL -->
-
       <div class="aboutPanel">
 
         <small>
@@ -654,12 +919,59 @@
         </h3>
 
         <p>
-          Browser-based multiplayer frontend with a
+          Browser-based frontend connected to a
           persistent Node.js / Socket.IO game server.
         </p>
 
         <p>
-          Designed for 2–8 players.
+          Multiplayer supports 2–8 human players.
+          Single player places one human investigator
+          inside the same simulation engine with
+          autonomous NPC characters.
+        </p>
+
+      </div>
+
+
+      <div class="aboutPanel">
+
+        <small>
+          SINGLE PLAYER
+        </small>
+
+        <h3>
+          AUTONOMOUS KILLER
+        </h3>
+
+        <p>
+          In solo mode the Killer is an AI-controlled
+          NPC with a private motive, memories, pressure,
+          relationships, suspicion and self-preservation.
+        </p>
+
+        <p>
+          The player remains the investigator.
+          The hidden truth stays authoritative on the server.
+        </p>
+
+      </div>
+
+
+      <div class="aboutPanel">
+
+        <small>
+          CASE PHILOSOPHY
+        </small>
+
+        <h3>
+          NO FIXED SCRIPT
+        </h3>
+
+        <p>
+          Cases are generated from a living simulation.
+          Characters can move, remember, cooperate,
+          lie, deflect, panic, investigate and change
+          their behavior as the case develops.
         </p>
 
       </div>
@@ -706,6 +1018,7 @@
       ×
     </button>
 
+
     <small>
       LIVE INTERVIEW
     </small>
@@ -716,10 +1029,12 @@
 
     <p id="qFrom"></p>
 
+
     <div
       class="questionBox"
       id="qText"
     ></div>
+
 
     <label>
       YOUR ANSWER
@@ -731,6 +1046,7 @@
       ></textarea>
 
     </label>
+
 
     <button
       class="primary wide"
@@ -766,15 +1082,19 @@
       ×
     </button>
 
+
     <small>
       NOCTURNE SETUP
     </small>
+
 
     <h2 id="modalTitle">
       Create a new case
     </h2>
 
+
     <p id="modalText"></p>
+
 
     <label>
       PLAYER NAME
@@ -786,6 +1106,7 @@
         placeholder="Your name"
       >
     </label>
+
 
     <label
       id="codeLabel"
@@ -801,6 +1122,7 @@
       >
     </label>
 
+
     <button
       id="modalGo"
       class="primary wide"
@@ -809,8 +1131,10 @@
       CREATE ROOM
     </button>
 
+
     <p class="modalHint">
-      2–8 players. One human is secretly selected as Killer when the case starts.
+      Multiplayer supports 2–8 players.
+      One human is secretly selected as Killer when the case starts.
     </p>
 
   </div>
