@@ -941,9 +941,16 @@ input::placeholder,textarea::placeholder{color:#68727f}
   .chat{display:grid;grid-template-columns:1fr}
   #chat{height:260px}
 }
+
 @media(max-width:760px){
   :root{--body:15.5px}
-  header{position:relative;padding:13px 16px;min-height:70px}
+
+  header{
+    position:relative;
+    padding:13px 16px;
+    min-height:70px
+  }
+
   .brand{gap:7px}
   .brand>b{font-size:18px}
   .brand span{font-size:9px}
@@ -951,20 +958,32 @@ input::placeholder,textarea::placeholder{color:#68727f}
   .headerRight{gap:8px}
   .aboutBtn{font-size:9px;padding:8px}
   .connection i{display:none}
+
   main{padding:0 14px 50px}
   #landing{min-height:auto}
   .hero{padding:70px 0 60px}
   .hero h1{font-size:clamp(48px,14vw,74px)}
   .hero>p{font-size:17px}
   .orb{display:none}
-  .heroBtns{display:grid;grid-template-columns:1fr}
+
+  .heroBtns{
+    display:grid;
+    grid-template-columns:1fr
+  }
+
   .big{width:100%}
-  .head{padding:42px 0 23px;display:block}
+
+  .head{
+    padding:42px 0 23px;
+    display:block
+  }
+
   .head h2,.casebar h2{font-size:30px}
   .sub{font-size:15px}
   .roomCode{text-align:left;margin-top:20px}
   .cols,.singleSetupGrid{grid-template-columns:1fr}
   .grid{display:block}
+
   #leftSide{
     position:fixed;
     z-index:60;
@@ -979,7 +998,9 @@ input::placeholder,textarea::placeholder{color:#68727f}
     transform:translateX(-105%);
     transition:transform .2s ease;
   }
+
   #leftSide.open{transform:translateX(0)}
+
   .mobileRole{
     display:flex;
     align-items:center;
@@ -991,11 +1012,13 @@ input::placeholder,textarea::placeholder{color:#68727f}
     border-radius:9px;
     background:var(--panel2);
   }
+
   .mobileRole span{
     color:var(--accent);
     font-family:"IBM Plex Mono",monospace;
     font-size:10px;
   }
+
   .mobileRole button{
     border:1px solid var(--line2);
     border-radius:7px;
@@ -1005,26 +1028,73 @@ input::placeholder,textarea::placeholder{color:#68727f}
     font-family:"IBM Plex Mono",monospace;
     font-size:9px;
   }
-  .casebar{display:block;padding:28px 0 15px}
+
+  .casebar{
+    display:block;
+    padding:28px 0 15px
+  }
+
   .casebar .stats{margin-top:14px}
-  .stats{display:grid;grid-template-columns:repeat(3,1fr)}
-  .stats>div{min-width:0;padding:9px}
+
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(3,1fr)
+  }
+
+  .stats>div{
+    min-width:0;
+    padding:9px
+  }
+
   .stats b{font-size:11px}
-  .action-grid{grid-template-columns:1fr}
+
+  .action-grid{
+    grid-template-columns:1fr
+  }
+
   .card{min-height:92px}
-  .composer{grid-template-columns:1fr}
+
+  .composer{
+    grid-template-columns:1fr
+  }
+
   .composer button{width:100%}
+
   .ev{grid-template-columns:1fr}
-  .ev img{width:100%;height:180px}
-  #tabs button{padding:13px 11px;font-size:9px}
-  #act,#invest,#evidence,#question,#visual,#accuse{padding:13px}
+
+  .ev img{
+    width:100%;
+    height:180px
+  }
+
+  #tabs button{
+    padding:13px 11px;
+    font-size:9px
+  }
+
+  #act,#invest,#evidence,#question,#visual,#accuse{
+    padding:13px
+  }
+
   .aboutGrid{grid-template-columns:1fr}
   .aboutCard,.modalCard{padding:23px}
-  .aboutCopyright{display:block}
-  .aboutCopyright span{display:block;margin-top:7px}
+
+  .aboutCopyright{
+    display:block
+  }
+
+  .aboutCopyright span{
+    display:block;
+    margin-top:7px
+  }
+
   .siteFooter{display:block}
-  .footerLinks{justify-content:flex-start;margin-top:13px}
+  .footerLinks{
+    justify-content:flex-start;
+    margin-top:13px
+  }
 }
+
 @media(max-width:480px){
   .headerRight .aboutBtn{display:none}
   .hero h1{font-size:48px}
@@ -1046,6 +1116,7 @@ input::placeholder,textarea::placeholder{color:#68727f}
 /* CASE FEED "LATEST" button must look like a NOCTURNE control,
    not the browser's default white button. */
 #events + *{}
+
 .feed .tiny{
   border:1px solid var(--line2);
   border-radius:7px;
@@ -1058,6 +1129,7 @@ input::placeholder,textarea::placeholder{color:#68727f}
   letter-spacing:.04em;
   line-height:1;
 }
+
 .feed .tiny:hover{
   border-color:var(--accent);
   color:var(--accent);
@@ -1095,13 +1167,14 @@ input::placeholder,textarea::placeholder{color:#68727f}
 .person>b,.loc>b{
   letter-spacing:-.01em;
 }
+
+
 /* =========================================================
    FINAL GAME DASHBOARD ALIGNMENT
    Scoped to the game screen only.
    Landing/index sizing is intentionally untouched.
    ========================================================= */
 
-/* Keep the original three-column game proportions. */
 #game .grid{
   grid-template-columns:250px minmax(430px,1fr) 330px;
   gap:16px;
@@ -1198,7 +1271,6 @@ input::placeholder,textarea::placeholder{color:#68727f}
   50%{opacity:1;transform:scale(1.15)}
 }
 
-/* Keep the game columns balanced at medium desktop widths. */
 @media(max-width:1050px){
   #game .grid{
     grid-template-columns:220px minmax(0,1fr);
@@ -1209,7 +1281,6 @@ input::placeholder,textarea::placeholder{color:#68727f}
   }
 }
 
-/* Mobile behavior remains the original NOCTURNE layout. */
 @media(max-width:760px){
   #game .grid{
     display:block;
@@ -1232,74 +1303,200 @@ input::placeholder,textarea::placeholder{color:#68727f}
 
 /* =========================================================
    EVIDENCE PANEL CONTAINMENT
-   Keeps a growing evidence collection inside the game panel.
-   The page itself does not grow because of evidence.
+   Existing evidence data remains unlimited.
+   Only the visible panel viewport is bounded.
    ========================================================= */
 
-#game .evidenceScroll{
-  width:100%;
-  height:min(520px,55vh);
-  min-height:220px;
-  max-height:520px;
+/* IMPORTANT:
+   The outer Actions panel becomes the viewport.
+   It cannot expand because of evidence. */
+#game .actions{
+  display:flex;
+  flex-direction:column;
+  height:560px;
+  max-height:560px;
+  min-height:0;
+  overflow:hidden;
+  box-sizing:border-box;
+}
+
+/* Tabs remain visible and fixed at the top. */
+#game .actions > #tabs{
+  flex:0 0 auto;
+  min-height:49px;
+  max-height:49px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  box-sizing:border-box;
+}
+
+/* Each tab gets the remaining vertical space.
+   This is the scrollbar that should move. */
+#game .actions > #act,
+#game .actions > #invest,
+#game .actions > #evidence,
+#game .actions > #question,
+#game .actions > #visual,
+#game .actions > #accuse{
+  flex:1 1 auto;
+  min-height:0;
+  max-height:none;
   overflow-y:auto;
   overflow-x:hidden;
   box-sizing:border-box;
-  padding-right:4px;
   scrollbar-width:thin;
   scrollbar-color:#59616b #080a0d;
 }
 
-#game .evidenceScroll .egrid{
-  width:100%;
-  box-sizing:border-box;
+/* Evidence itself does NOT scroll.
+   Its parent #evidence is the scroll viewport. */
+#game .actions > #evidence{
+  padding:0;
 }
 
-#game .evidenceScroll .ev{
+/* Unlimited evidence cards stay inside #evidence. */
+#game .actions > #evidence .egrid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:11px;
+  width:100%;
+  max-height:none;
+  overflow:visible;
+  box-sizing:border-box;
+  padding:16px;
+}
+
+/* Prevent cards from escaping horizontally. */
+#game .actions > #evidence .ev{
   width:100%;
   max-width:100%;
+  min-width:0;
   box-sizing:border-box;
   overflow:hidden;
 }
 
-#game .evidenceScroll .evContent{
+/* Long AI-generated evidence descriptions cannot stretch
+   the panel wider than the screen. */
+#game .actions > #evidence .ev > div{
   min-width:0;
   max-width:100%;
   overflow-wrap:anywhere;
   word-break:break-word;
 }
 
-#game .evidenceScroll .ev img{
+/* Evidence images remain contained. */
+#game .actions > #evidence .ev img{
   max-width:100%;
-  height:auto;
-  object-fit:cover;
+  box-sizing:border-box;
 }
 
-#game .evidenceScroll::-webkit-scrollbar{
-  width:7px;
+/* ACTION TAB */
+#game .actions > #act{
+  padding:18px;
 }
 
-#game .evidenceScroll::-webkit-scrollbar-track{
+/* INVESTIGATION TAB */
+#game .actions > #invest{
+  padding:18px;
+}
+
+/* QUESTION TAB */
+#game .actions > #question{
+  padding:18px;
+}
+
+/* VISUAL TAB */
+#game .actions > #visual{
+  padding:18px;
+}
+
+/* ACCUSATION TAB */
+#game .actions > #accuse{
+  padding:18px;
+}
+
+
+/* =========================================================
+   ACTION CONTENT SCROLLBAR
+   ========================================================= */
+
+#game .actions > #act::-webkit-scrollbar,
+#game .actions > #invest::-webkit-scrollbar,
+#game .actions > #evidence::-webkit-scrollbar,
+#game .actions > #question::-webkit-scrollbar,
+#game .actions > #visual::-webkit-scrollbar,
+#game .actions > #accuse::-webkit-scrollbar{
+  width:8px;
+}
+
+#game .actions > #act::-webkit-scrollbar-track,
+#game .actions > #invest::-webkit-scrollbar-track,
+#game .actions > #evidence::-webkit-scrollbar-track,
+#game .actions > #question::-webkit-scrollbar-track,
+#game .actions > #visual::-webkit-scrollbar-track,
+#game .actions > #accuse::-webkit-scrollbar-track{
   background:#080a0d;
 }
 
-#game .evidenceScroll::-webkit-scrollbar-thumb{
+#game .actions > #act::-webkit-scrollbar-thumb,
+#game .actions > #invest::-webkit-scrollbar-thumb,
+#game .actions > #evidence::-webkit-scrollbar-thumb,
+#game .actions > #question::-webkit-scrollbar-thumb,
+#game .actions > #visual::-webkit-scrollbar-thumb,
+#game .actions > #accuse::-webkit-scrollbar-thumb{
   background:#59616b;
   border-radius:999px;
   border:1px solid #080a0d;
 }
 
-#game .evidenceScroll::-webkit-scrollbar-thumb:hover{
+#game .actions > #act::-webkit-scrollbar-thumb:hover,
+#game .actions > #invest::-webkit-scrollbar-thumb:hover,
+#game .actions > #evidence::-webkit-scrollbar-thumb:hover,
+#game .actions > #question::-webkit-scrollbar-thumb:hover,
+#game .actions > #visual::-webkit-scrollbar-thumb:hover,
+#game .actions > #accuse::-webkit-scrollbar-thumb:hover{
   background:#7b838d;
 }
 
-#game .evidenceScroll::-webkit-scrollbar-corner{
-  background:#080a0d;
-}
+
+/* =========================================================
+   MOBILE ACTION PANEL
+   ========================================================= */
 
 @media(max-width:760px){
-  #game .evidenceScroll{
-    height:420px;
-    max-height:420px;
-    min-height:200px;
+
+  #game .actions{
+    height:540px;
+    max-height:540px;
+  }
+
+  #game .actions > #tabs{
+    min-height:49px;
+    max-height:49px;
+  }
+
+  #game .actions > #act,
+  #game .actions > #invest,
+  #game .actions > #question,
+  #game .actions > #visual,
+  #game .actions > #accuse{
+    padding:13px;
+  }
+
+  #game .actions > #evidence .egrid{
+    grid-template-columns:1fr;
+    padding:13px;
+  }
+}
+
+@media(max-width:480px){
+
+  #game .actions{
+    height:520px;
+    max-height:520px;
+  }
+
+  #game .actions > #evidence .egrid{
+    padding:12px;
   }
 }
