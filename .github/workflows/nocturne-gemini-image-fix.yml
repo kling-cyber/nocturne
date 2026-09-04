@@ -1,0 +1,132 @@
+name: NOCTURNE Gemini Image Migration
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch game.js for Gemini image generation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('nocturne-vercel-3.5/backend/server/game.js')
+          text = path.read_text(encoding='utf-8')
+
+          old = '''const MODEL =
+  process.env.OPENAI_TEXT_MODEL ||
+  "gpt-5.6-luna";
+
+const IMG =
+  process.env.OPENAI_IMAGE_MODEL ||
+  "gpt-image-2";'''
+
+          new = '''const MODEL =
+  process.env.OPENAI_TEXT_MODEL ||
+  "gpt-5.6-luna";
+
+const geminiApiKey =
+  String(process.env.GEMINI_API_KEY || "").trim();
+
+const geminiImageAi =
+  OpenAI && geminiApiKey
+    ? new OpenAI({
+        apiKey: geminiApiKey,
+        baseURL:
+          "https://generativelanguage.googleapis.com/v1beta/openai/"
+      })
+    : null;
+
+const IMG =
+  process.env.GEMINI_IMAGE_MODEL ||
+  "gemini-2.5-flash-image";'''
+
+          if old not in text:
+              raise SystemExit('Expected model configuration block was not found')
+          text = text.replace(old, new, 1)
+
+          replacements = [
+              (
+                  'if (!ai) {',
+                  'if (!geminiImageAi) {',
+                  1,
+              ),
+              (
+                  '"[NOCTURNE] OPENAI_API_KEY present:",\n        !!apiKey',
+                  '"[NOCTURNE] GEMINI_API_KEY present:",\n        !!geminiApiKey',
+                  1,
+              ),
+              (
+                  '"[NOCTURNE] OpenAI SDK loaded:",',
+                  '"[NOCTURNE] OpenAI-compatible SDK loaded:",',
+                  1,
+              ),
+              (
+                  '"Image generation is not configured on the NOCTURNE server. Check OPENAI_API_KEY on Render and redeploy."',
+                  '"Image generation is not configured on the NOCTURNE server. Check GEMINI_API_KEY and GEMINI_IMAGE_MODEL on Render and redeploy."',
+                  1,
+              ),
+              (
+                  '`[NOCTURNE] Calling OpenAI Images API with ${IMG}...`',
+                  '`[NOCTURNE] Calling Gemini Images API with ${IMG}...`',
+                  1,
+              ),
+              (
+                  'await ai.images.generate({',
+                  'await geminiImageAi.images.generate({',
+                  1,
+              ),
+              (
+                  'size:\n            "1536x1024",\n\n          quality:\n            "medium"',
+                  'size:\n            "1344x768",\n\n          response_format:\n            "b64_json",\n\n          n:\n            1',
+                  1,
+              ),
+              (
+                  '"[NOCTURNE] OpenAI image request completed."',
+                  '"[NOCTURNE] Gemini image request completed."',
+                  1,
+              ),
+              (
+                  'GPT image responses can provide',
+                  'Gemini image responses can provide',
+                  1,
+              ),
+              (
+                  '"[NOCTURNE] Model:",\n        IMG',
+                  '"[NOCTURNE] Gemini image model:",\n        IMG',
+                  1,
+              ),
+          ]
+
+          for old, new, count in replacements:
+              if old not in text:
+                  raise SystemExit(f'Expected text was not found: {old[:100]!r}')
+              text = text.replace(old, new, count)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Validate JavaScript
+        run: node --check nocturne-vercel-3.5/backend/server/game.js
+
+      - name: Commit only game.js and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add nocturne-vercel-3.5/backend/server/game.js .github/workflows/nocturne-gemini-image-fix.yml
+          git rm .github/workflows/nocturne-gemini-image-fix.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "Switch NOCTURNE image generation to Gemini"
+          git push
