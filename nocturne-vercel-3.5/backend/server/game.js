@@ -16,9 +16,21 @@ try {
 const apiKey =
   String(process.env.OPENAI_API_KEY || "").trim();
 
+const geminiApiKey =
+  String(process.env.GEMINI_API_KEY || "").trim();
+
 const ai =
   OpenAI && apiKey
     ? new OpenAI({ apiKey })
+    : null;
+
+const geminiImageAi =
+  OpenAI && geminiApiKey
+    ? new OpenAI({
+        apiKey: geminiApiKey,
+        baseURL:
+          "https://generativelanguage.googleapis.com/v1beta/openai/"
+      })
     : null;
 
 const MODEL =
@@ -26,8 +38,8 @@ const MODEL =
   "gpt-5.6-luna";
 
 const IMG =
-  process.env.OPENAI_IMAGE_MODEL ||
-  "gpt-image-2";
+  process.env.GEMINI_IMAGE_MODEL ||
+  "gemini-2.5-flash-image";
 
 
 /* =========================================================
@@ -2986,15 +2998,15 @@ Nearby people: ${this.people
      * Confirm that OpenAI exists.
      */
 
-    if (!ai) {
+    if (!geminiImageAi) {
 
       console.error(
         "[NOCTURNE] Image generation unavailable."
       );
 
       console.error(
-        "[NOCTURNE] OPENAI_API_KEY present:",
-        !!apiKey
+        "[NOCTURNE] GEMINI_API_KEY present:",
+        !!geminiApiKey
       );
 
       console.error(
@@ -3081,12 +3093,12 @@ It may contain plausible visual observations, but it must not assert hidden case
 
 
       console.log(
-        `[NOCTURNE] Calling OpenAI Images API with ${IMG}...`
+        `[NOCTURNE] Calling Gemini Images API with ${IMG}...`
       );
 
 
       const response =
-        await ai.images.generate({
+        await geminiImageAi.images.generate({
 
           model:
             IMG,
@@ -3094,15 +3106,18 @@ It may contain plausible visual observations, but it must not assert hidden case
           prompt,
 
           size:
-            "1536x1024",
+            "1344x768",
 
-          quality:
-            "medium"
+          response_format:
+            "b64_json",
+
+          n:
+            1
         });
 
 
       console.log(
-        "[NOCTURNE] OpenAI image request completed."
+        "[NOCTURNE] Gemini image request completed."
       );
 
 
@@ -3119,7 +3134,7 @@ It may contain plausible visual observations, but it must not assert hidden case
 
 
       /*
-       * GPT image responses can provide
+       * Gemini image responses can provide
        * base64 image data or a URL.
        */
 
@@ -3233,7 +3248,7 @@ It may contain plausible visual observations, but it must not assert hidden case
       );
 
       console.error(
-        "[NOCTURNE] Model:",
+        "[NOCTURNE] Gemini image model:",
         IMG
       );
 
