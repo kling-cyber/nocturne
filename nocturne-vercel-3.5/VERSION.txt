@@ -1,1 +1,5 @@
-NOCTURNE 3.5.0 Online Beta / Vercel-ready frontend + persistent Socket.IO backend
+NOCTURNE 3.5
+Created & Owned by Kavish Koradia
+Copyright © 2026 Kavish Koradia
+Public Frontend: https://nocturne-dun-xi.vercel.app
+Backend: https://nocturne-8tko.onrender.com
