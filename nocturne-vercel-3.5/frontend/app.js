@@ -2,6 +2,10 @@ const SOCKET_URL=(window.NOCTURNE_SERVER_URL||"").trim().replace(/\/$/,"");
 const sock=io(SOCKET_URL||undefined,{transports:["websocket","polling"],withCredentials:false});
 let S=null,me=null,setupMode="create",activeTab="act",busy=false,incomingQ=null;
 const $=id=>document.getElementById(id);
+
+function openAbout(){$('aboutModal')?.classList.remove('hide');document.body.classList.add('aboutOpen')}
+function closeAbout(){$('aboutModal')?.classList.add('hide');document.body.classList.remove('aboutOpen')}
+
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const js=x=>String(x??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
 function show(id){["landing","lobby","game"].forEach(x=>$(x)?.classList.toggle("hide",x!==id));window.scrollTo(0,0)}
@@ -54,5 +58,7 @@ function visual(type){setBusy(true,type==='cctv'?'Retrieving CCTV evidence…':'
 function showVisual(d){const box=$('visualbox');if(box)box.innerHTML=`<img src="${d.image}" alt="${esc(d.title)}"><div class="overlay">${esc(d.title)}<br>${esc(d.description)}</div><div class="scan"></div>`;tab('visual')}
 function addChat(name,text){const d=document.createElement('div');d.className='msg';d.innerHTML=`<b>${esc(name)}</b><p>${esc(text)}</p>`;$('chat').appendChild(d);$('chat').scrollTop=$('chat').scrollHeight}
 function sendChat(e){e.preventDefault();const x=$('chatin').value.trim();if(x){sock.emit('chat',{text:x});$('chatin').value=''}}
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeQuestion()}if(e.key==='Enter'&&!e.shiftKey&&!$('modal').classList.contains('hide')&&document.activeElement?.id!=='chatin'){e.preventDefault();submitSetup()}});
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeQuestion();closeAbout()}if(e.key==='Enter'&&!e.shiftKey&&!$('modal').classList.contains('hide')&&document.activeElement?.id!=='chatin'){e.preventDefault();submitSetup()}});
+
 show('landing');
