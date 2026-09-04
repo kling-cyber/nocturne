@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080a0d"><meta name="description" content="NOCTURNE 3.4, a living multiplayer murder mystery."><title>NOCTURNE 3.4 // Living Mystery</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header>
+  <div class="brand"><b>NOCTURNE</b><span>LIVE CASE ENGINE · 3.4</span></div>
+  <div class="connection" id="connection"><span class="dot"></span><i id="conn">CONNECTING</i></div>
+</header>
+
+<div id="toast" aria-live="polite"></div>
+<div id="busy" class="hide"><div class="busyCard"><div class="spinner"></div><b id="busyText">Working…</b><small>Please wait</small></div></div>
+
+<main>
+<section id="landing">
+  <div class="hero">
+    <small>PROCEDURAL · MULTIPLAYER · AI-ENHANCED</small>
+    <h1>Every crime<br><em>leaves a different shadow.</em></h1>
+    <p>A living social deduction mystery where the world keeps moving. One human is secretly the Killer. Everyone else must reconstruct what happened from people, places, contradictions and imperfect evidence.</p>
+    <div class="heroBtns">
+      <button class="primary big" onclick="openSetup('create')">＋ CREATE CASE</button>
+      <button class="secondary big" onclick="openSetup('join')">↪ JOIN CASE</button>
+    </div>
+    <div class="chips"><span>♾ Fresh cases</span><span>◉ Autonomous NPCs</span><span>▣ Visual evidence</span><span>⌁ Causal clues</span></div>
+  </div>
+  <div class="orb"><div><span>CASE ENGINE</span><b>READY</b><small>2–8 PLAYERS</small></div></div>
+</section>
+
+<section id="lobby" class="hide">
+  <div class="head">
+    <div><small>WAITING ROOM</small><h2>CASE LOBBY</h2><p class="sub">Invite friends with the room code. The host starts when everyone is ready.</p></div>
+    <div class="roomCode"><small>ROOM CODE</small><button class="code" id="code" onclick="copyCode()" title="Copy room code">----</button><span>Tap to copy</span></div>
+  </div>
+  <div class="cols">
+    <div class="panel">
+      <div class="panelTitle"><h3>PLAYERS</h3><span id="playerCount">0 / 8</span></div>
+      <div id="players"></div>
+      <div class="panelFooter"><button id="launch" class="primary wide" onclick="launchCase()">GENERATE CASE &amp; START</button><p id="launchHint">At least 2 players are required.</p></div>
+    </div>
+    <div class="panel guide"><h3>WHAT HAPPENS NEXT</h3>
+      <div class="step"><b>01</b><p><strong>Secret roles</strong><br>One human becomes the Killer. Roles are private.</p></div>
+      <div class="step"><b>02</b><p><strong>A living world</strong><br>NPCs move, remember, react and form suspicions.</p></div>
+      <div class="step"><b>03</b><p><strong>Investigate</strong><br>Cross-check testimony, movement, traces and visual evidence.</p></div>
+      <div class="step"><b>04</b><p><strong>Accuse carefully</strong><br>A wrong accusation helps the real Killer stay hidden.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="game" class="hide">
+  <div class="casebar">
+    <div><small id="case"></small><h2 id="world"></h2><p id="phaseHelp" class="sub"></p></div>
+    <div class="stats"><div><small>TIME</small><b id="clock">--:--</b></div><div><small>PHASE</small><b id="phase">SETUP</b></div></div>
+  </div>
+  <div class="mobileRole"><span id="roleMini">ROLE: UNKNOWN</span><button onclick="toggleSide()">CASE INFO</button></div>
+  <div class="grid">
+    <aside id="leftSide">
+      <div class="panel role"><h3>YOUR PRIVATE ROLE</h3><strong id="role">UNKNOWN</strong><p id="objective"></p><div id="killerControl"></div><div id="memory"></div></div>
+      <div class="panel"><div class="panelTitle"><h3>PEOPLE</h3><span id="aliveCount"></span></div><div id="people" class="scrollList"></div></div>
+      <div class="panel"><h3>LOCATIONS</h3><div id="locations" class="scrollList"></div></div>
+    </aside>
+    <article>
+      <div class="panel feed"><div class="panelTitle"><h3>CASE FEED</h3><button class="tiny" onclick="scrollFeed()">LATEST ↓</button><span id="eventCount"></span></div><div id="events"></div></div>
+      <div class="panel actions">
+        <nav id="tabs">
+          <button data-tab="act" onclick="tab('act')" class="active">ACT</button>
+          <button data-tab="invest" onclick="tab('invest')">INVESTIGATE</button>
+          <button data-tab="evidence" onclick="tab('evidence')">EVIDENCE <span id="evCount"></span></button>
+          <button data-tab="question" onclick="tab('question')">CALL / QUESTION</button><button data-tab="visual" onclick="tab('visual')">VISUAL EVIDENCE</button>
+          <button data-tab="accuse" onclick="tab('accuse')">ACCUSE</button>
+        </nav>
+        <div id="act"></div><div id="invest" class="hide"></div><div id="evidence" class="hide"></div><div id="question" class="hide"></div><div id="visual" class="hide"></div><div id="accuse" class="hide"></div>
+      </div>
+    </article>
+    <aside id="rightSide">
+      <div class="panel chat"><div class="panelTitle"><h3>PUBLIC COMMS</h3><span>ALL PLAYERS</span></div><div id="chat"><div class="systemMsg">Messages here are public. Your role and private objective are not.</div></div><form onsubmit="sendChat(event)"><input id="chatin" maxlength="800" autocomplete="off" placeholder="Message the group…"><button aria-label="Send message">↑</button></form></div>
+      <div class="panel tips"><h3>INVESTIGATION TIP</h3><p id="tip">A clue is strongest when it agrees with an independent source.</p></div>
+    </aside>
+  </div>
+</section>
+</main>
+
+<div id="questionModal" class="modal hide" role="dialog" aria-modal="true" aria-labelledby="qTitle"><div class="modalCard"><button class="modalClose" onclick="closeQuestion()" aria-label="Close">×</button><small>LIVE INTERVIEW</small><h2 id="qTitle">Incoming question</h2><p id="qFrom"></p><div class="questionBox" id="qText"></div><label>YOUR ANSWER<textarea id="answerInput" maxlength="700" placeholder="Answer in your own words. You control what your character says."></textarea></label><button class="primary wide" onclick="answerQuestion()">SEND ANSWER</button></div></div>
+<div id="modal" class="modal hide" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modalCard">
+    <button class="modalClose" onclick="closeModal()" aria-label="Close">×</button>
+    <small>NOCTURNE SETUP</small><h2 id="modalTitle">Create a new case</h2><p id="modalText"></p>
+    <label>PLAYER NAME<input id="nameInput" maxlength="24" autocomplete="nickname" placeholder="Your name"></label>
+    <label id="codeLabel" class="hide">ROOM CODE<input id="codeInput" maxlength="4" autocomplete="off" placeholder="ABCD"></label>
+    <button id="modalGo" class="primary wide" onclick="submitSetup()">CREATE ROOM</button>
+    <p class="modalHint">2–8 players. One human is secretly selected as Killer when the case starts.</p>
+  </div>
+</div>
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+<script src="/config.js"></script>
+<script src="/app.js"></script>
+</body></html>

@@ -1,0 +1,20 @@
+{
+  "name": "nocturne-ai-murder-simulation",
+  "version": "3.5.0",
+  "private": true,
+  "description": "NOCTURNE: a standalone multiplayer living mystery with a server-authoritative simulation.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "check": "node --check server/index.js && node --check server/game.js && node --check public/app.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "openai": "^6.8.1",
+    "socket.io": "^4.8.1"
+  }
+}
