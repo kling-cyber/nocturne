@@ -2,11 +2,16 @@
 
 ## The Living Mystery Engine
 
-**NOCTURNE** is a standalone multiplayer murder-mystery game built around procedural cases, autonomous characters, imperfect information, investigation, testimony, evidence, and human decision-making.
+**NOCTURNE** is a standalone multiplayer and single-player murder-mystery game built around procedural cases, autonomous characters, imperfect information, investigation, testimony, evidence, and human decision-making.
 
 Every case is designed to feel like a living situation rather than a fixed puzzle.
 
-Players interact with a world containing human-controlled investigators, a human-controlled Killer, and autonomous NPCs with their own memories, beliefs, goals, relationships, secrets, routines, and reactions.
+NOCTURNE supports two primary ways to play:
+
+- **MULTIPLAYER**: Real players investigate together while one real human player is secretly selected as the Killer.
+- **SINGLE PLAYER**: One real player investigates a case while the remaining cast, including the Killer, is controlled by autonomous AI characters.
+
+The world is driven by a server-authoritative simulation containing characters with their own memories, beliefs, goals, relationships, secrets, routines, suspicion, stress, and reactions.
 
 The result is a mystery that develops through player actions, character behavior, evidence, and the evolving timeline.
 
@@ -26,6 +31,28 @@ Third-party libraries and technologies remain subject to their respective licens
 
 ---
 
+# Version
+
+**NOCTURNE 4.0**
+
+NOCTURNE 4.0 introduces the major **Single Player Living Mystery** experience while preserving the original multiplayer architecture.
+
+### 4.0 Highlights
+
+- Single-player cases
+- AI-controlled Killer NPC
+- Investigator role selection
+- Four difficulty levels
+- Autonomous NPC behavior
+- Individual character memories
+- Server-authoritative hidden truth
+- Procedural case generation
+- Dynamic evidence and testimony
+- Multiplayer preservation
+- Improved game mode handling
+
+---
+
 # Introduction
 
 Traditional murder-mystery games usually provide a predetermined set of clues and a predetermined solution.
@@ -34,13 +61,11 @@ NOCTURNE takes a different approach.
 
 The world is simulated around a hidden causal truth.
 
-Characters move through locations, interact with one another, remember events differently, form opinions, hide information, investigate their surroundings, and react to what other players do.
+Characters move through locations, interact with one another, remember events differently, form opinions, hide information, investigate their surroundings, and react to what players do.
 
-The human Killer is part of the player group.
+The mystery is not simply a list of clues waiting to be collected.
 
-The investigators must reconstruct what actually happened from incomplete and sometimes contradictory information.
-
-There is no requirement for every player to receive the same information.
+Instead, the investigation develops from the simulated world.
 
 Your character only knows what they have personally experienced, observed, learned, or been told.
 
@@ -48,37 +73,103 @@ That makes every investigation a problem of reasoning rather than simply finding
 
 ---
 
-# Core Requirements
+# Game Modes
 
-## Players
+## Multiplayer
+
+Multiplayer is designed for **2 to 8 real players**.
+
+One real player is randomly selected as the Killer.
+
+The remaining players become investigators with different specialties.
+
+The Killer receives private information and controls their own decisions.
+
+The AI does not control the human Killer and does not write their answers.
+
+Players must investigate the world, question characters, examine evidence, compare testimony, and determine who is responsible.
+
+### Multiplayer Rules
 
 - Minimum players: **2**
 - Maximum players: **8**
-- Multiplayer through a web browser
-- No local multiplayer required
-- One real human player becomes the Killer
+- One real human becomes the Killer
 - Remaining human players become investigators
-
-## Game Architecture
-
-NOCTURNE uses:
-
-- HTML
-- CSS
-- JavaScript
-- Node.js
-- Socket.IO
-- Vercel
-- Render
-- Optional OpenAI integration
-
-The frontend runs as a web application while the multiplayer game state is maintained by the server.
-
-The server is authoritative over the hidden case truth and game state.
+- NPCs remain autonomous
+- Killer identity is private
+- Human players control their own answers
+- Server controls the hidden case truth
 
 ---
 
-# How to Play
+## Single Player
+
+Single Player is designed for one real human investigator.
+
+The player is **never assigned as the Killer** in Single Player.
+
+Instead:
+
+- The human player becomes an investigator
+- The player selects an investigator specialty
+- The remaining cast is controlled by AI
+- The Killer is an AI-controlled NPC
+- The AI Killer has its own memories, motive, relationships, pressure, suspicion, and self-preservation behavior
+- NPCs interact with the investigation independently
+- The player must discover the Killer through evidence, behavior, testimony, and reasoning
+
+The Single Player mode uses the same underlying mystery philosophy as Multiplayer rather than being a separate scripted puzzle.
+
+---
+
+# Single Player Setup
+
+Before starting a solo case, the player selects:
+
+### Investigator Name
+
+The player's character name.
+
+### Investigator Role
+
+Available investigator specialties include:
+
+- Lead Detective
+- Forensic Analyst
+- Behavioral Analyst
+- Digital Investigator
+- Field Investigator
+- Investigative Journalist
+- Security Specialist
+- Medical Consultant
+
+### Difficulty
+
+NOCTURNE 4.0 provides four difficulty levels:
+
+#### CASUAL
+
+Designed for a more forgiving investigation.
+
+Characters and evidence are easier to interpret.
+
+#### DETECTIVE
+
+Provides a balanced investigation with stronger contradictions and more demanding reasoning.
+
+#### EXPERT
+
+Characters become harder to read and evidence requires stronger corroboration.
+
+#### NOCTURNE
+
+The most demanding experience.
+
+Information can be incomplete, memories can conflict, characters can become highly defensive, and the player must carefully reconstruct the hidden truth.
+
+---
+
+# How to Play Multiplayer
 
 ## 1. Create a Room
 
@@ -115,7 +206,16 @@ At least **2 players** are required before the host can start the case.
 
 The host launches the case.
 
-The game generates the world, characters, secrets, relationships, timeline, and hidden case state.
+The game generates:
+
+- The world
+- Characters
+- Secrets
+- Relationships
+- Timeline
+- Hidden case state
+- Evidence
+- Character memories
 
 One human player is randomly assigned:
 
@@ -127,41 +227,89 @@ The Killer's identity and private information are not publicly revealed.
 
 ---
 
+# How to Play Single Player
+
+## 1. Select SINGLE PLAYER
+
+From the main menu select:
+
+**SINGLE PLAYER**
+
+---
+
+## 2. Configure Your Investigator
+
+Enter your investigator name.
+
+Select your investigator specialty.
+
+Choose a difficulty:
+
+- CASUAL
+- DETECTIVE
+- EXPERT
+- NOCTURNE
+
+---
+
+## 3. Start the Case
+
+NOCTURNE generates a new case.
+
+The system creates:
+
+- Your investigator
+- AI investigators and NPCs
+- An AI Killer
+- A victim
+- Character relationships
+- Secrets
+- Motives
+- Locations
+- Memories
+- Timeline events
+- Evidence
+- Hidden truth
+
+The Killer is an AI-controlled character.
+
+The player must uncover the Killer's identity through investigation.
+
+---
+
 # Investigator Roles
 
 Investigators have different specialties.
 
-Available investigator roles include:
-
-### Lead Detective
+## Lead Detective
 
 Coordinates the investigation and focuses on the overall case.
 
-### Forensic Analyst
+## Forensic Analyst
 
 Focuses on physical evidence, traces, objects, and forensic observations.
 
-### Behavioral Analyst
+## Behavioral Analyst
 
 Studies character behavior, inconsistencies, motives, stress, and relationships.
 
-### Digital Investigator
+## Digital Investigator
 
 Focuses on digital evidence, communications, devices, logs, and technological traces.
 
-### Field Investigator
+## Field Investigator
 
 Focuses on locations, physical observations, searches, movement, and direct investigation.
 
-### Investigative Journalist
+## Investigative Journalist
 
 Focuses on interviews, testimony, information gathering, and connecting people to events.
 
-### Security Specialist
+## Security Specialist
 
 Focuses on surveillance, access, movement, security systems, and CCTV-related information.
 
-### Medical Consultant
+## Medical Consultant
 
 Focuses on medical observations, injuries, timing, and related evidence.
 
@@ -169,7 +317,9 @@ Focuses on medical observations, injuries, timing, and related evidence.
 
 # The Killer
 
-The Killer is always controlled by a **real human player**.
+## Multiplayer Killer
+
+In Multiplayer, the Killer is always controlled by a **real human player**.
 
 The AI does not control the Killer.
 
@@ -179,7 +329,56 @@ The Killer receives private information and controls their own decisions.
 
 During the critical period, the Killer can make the decisions available to their role.
 
-The other players must determine who the Killer is through investigation, evidence, behavior, contradictions, and reasoning.
+The other players must determine who the Killer is through:
+
+- Investigation
+- Evidence
+- Behavior
+- Contradictions
+- Testimony
+- Relationships
+- Reasoning
+
+---
+
+## Single Player Killer
+
+In Single Player, the Killer is an **AI-controlled NPC**.
+
+The AI Killer has its own internal character state.
+
+This can include:
+
+- Motive
+- Pressure
+- Relationships
+- Suspicion
+- Secrets
+- Memories
+- Goals
+- Self-preservation
+- Knowledge
+- Stress
+- Behavioral tendencies
+
+The AI Killer is not simply waiting for the player to discover a predetermined answer.
+
+Its behavior is influenced by the simulated case and its own character state.
+
+The Killer may attempt to:
+
+- Hide information
+- Deflect questions
+- Protect itself
+- Protect another character
+- Maintain a cover story
+- React to suspicion
+- Change behavior
+- Manipulate conversations
+- Become stressed
+- Reveal inconsistencies under pressure
+
+The exact behavior depends on the character and the evolving case.
 
 ---
 
@@ -325,7 +524,15 @@ For example:
 - What do you know about a particular location?
 - What happened before you arrived?
 
-NPCs answer according to their own memories, beliefs, goals, stress, and secrets.
+NPCs answer according to their own:
+
+- Memories
+- Beliefs
+- Goals
+- Stress
+- Secrets
+- Knowledge
+- Relationships
 
 If the target is another human player, that player receives the question privately and writes their own answer.
 
@@ -345,11 +552,21 @@ Characters move through the world and establish relationships and observations.
 
 Players can investigate the environment and interact with characters before the critical event.
 
+---
+
 ## CRIME
 
-The critical window is active.
+The critical window becomes active.
+
+### Multiplayer
 
 The human Killer controls the turning point.
+
+### Single Player
+
+The AI Killer controls the turning point according to its character state and case simulation.
+
+---
 
 ## POST-CRIME
 
@@ -357,9 +574,15 @@ The death has been discovered.
 
 Players begin securing observations and comparing accounts.
 
+Characters react to what happened.
+
+---
+
 ## INVESTIGATION
 
 Players reconstruct the timeline, investigate evidence, question characters, and test contradictions.
+
+---
 
 ## ENDED
 
@@ -384,7 +607,15 @@ Current settings include:
 9. **Grand Prix Paddock**
 10. **Old City University**
 
-Each setting provides a different environment for characters, movement, relationships, observations, and evidence.
+Each setting provides a different environment for:
+
+- Characters
+- Movement
+- Relationships
+- Observations
+- Evidence
+- Investigation
+- Timeline events
 
 ---
 
@@ -404,6 +635,8 @@ The system can generate different combinations of:
 - Observations
 - Suspicions
 - Character reactions
+- Motives
+- Pressures
 
 The intention is to make repeated games less predictable.
 
@@ -417,11 +650,48 @@ The game maintains a hidden causal truth behind the public information.
 
 The server is authoritative over this hidden state.
 
-The narrative and AI layers can help produce character behavior, explanations, and observations, but they should not be able to arbitrarily rewrite the underlying truth of the case.
+The narrative and AI layers can help produce:
+
+- Character behavior
+- Explanations
+- Observations
+- Testimony
+- Reactions
+
+However, they should not be able to arbitrarily rewrite the underlying truth of the case.
 
 This separation is important.
 
 The mystery should emerge from the simulated state rather than being invented after players make an accusation.
+
+---
+
+# Server Authority
+
+NOCTURNE uses a server-authoritative architecture.
+
+The frontend should not determine the underlying truth of a case.
+
+The server maintains important game state including:
+
+- Rooms
+- Players
+- Characters
+- Roles
+- Hidden Killer state
+- Victim
+- Relationships
+- Memories
+- Timeline
+- Evidence
+- Investigation state
+- Game phase
+- Accusations
+- Case outcome
+
+The frontend primarily presents the information that the current player is allowed to know.
+
+This helps protect hidden information in both multiplayer and single-player games.
 
 ---
 
@@ -441,9 +711,11 @@ RENDER NODE.JS SERVER
       │
       ├── Room Management
       ├── Multiplayer State
+      ├── Single Player State
       ├── Case Generation
       ├── Character State
       ├── Memory
       ├── Evidence
       ├── Timeline
-      └── Game Rules
+      ├── Game Rules
+      └── AI / Narrative Layer
