@@ -1095,136 +1095,867 @@ input::placeholder,textarea::placeholder{color:#68727f}
 .person>b,.loc>b{
   letter-spacing:-.01em;
 }
+
 /* =========================================================
-   FINAL GAME DASHBOARD ALIGNMENT
-   Scoped to the game screen only.
-   Landing/index sizing is intentionally untouched.
+
+/* =========================================================
+   NOCTURNE CASE ENGINE HUD
+   FINAL CLEAN VERSION
+   =========================================================
+   IMPORTANT:
+   - Hero spacing is preserved.
+   - HUD is positioned relative to #landing, not .hero.
+   - HUD effects cannot create page scroll.
+   - CASE ENGINE remains plain text.
+   - One HUD implementation only.
    ========================================================= */
 
-/* Keep the original three-column game proportions. */
-#game .grid{
-  grid-template-columns:250px minmax(430px,1fr) 330px;
-  gap:16px;
-  align-items:start;
+
+/* The landing section owns the HUD coordinate system. */
+#landing{
+  position:relative;
+  min-height:calc(100vh - 78px);
+  height:calc(100vh - 78px);
+  display:grid;
+  place-items:center;
+  overflow:hidden;
 }
 
-/* People and Locations use the same internal scrolling model. */
-#game #people,
-#game #locations{
-  max-height:300px;
-  overflow-y:auto;
-  overflow-x:hidden;
-  scrollbar-width:thin;
-  scrollbar-color:#59616b #080a0d;
+
+/* Keep the original hero dimensions and spacing. */
+#landing .hero{
+  position:static;
+  z-index:3;
 }
 
-/* Case feed has its own readable timeline scroll. */
-#game #events{
-  max-height:620px;
-  overflow-y:auto;
-  overflow-x:hidden;
-  scrollbar-width:thin;
-  scrollbar-color:#59616b #080a0d;
+
+/* Remove the bottom padding only for the landing page.
+   Other NOCTURNE pages keep their original main spacing. */
+main:has(#landing){
+  padding-bottom:0;
 }
 
-/* Public communications keeps scrolling inside its own panel. */
-#game #chat{
-  height:430px;
-  overflow-y:auto;
-  overflow-x:hidden;
-  scrollbar-width:thin;
-  scrollbar-color:#59616b #080a0d;
+
+/* =========================================================
+   HUD CIRCLE
+   ========================================================= */
+
+#landing > .orb{
+  position:absolute;
+
+  /* fixed visual footprint */
+  width:300px;
+  height:300px;
+
+  /* right side, vertically centered */
+  right:2.5%;
+  left:auto;
+  top:50%;
+  bottom:auto;
+
+  transform:translateY(-50%);
+
+  display:grid;
+  place-items:center;
+
+  border:1px solid rgba(217,255,98,.34);
+  border-radius:50%;
+
+  background:
+    radial-gradient(
+      circle at 50% 48%,
+      rgba(217,255,98,.15) 0%,
+      rgba(126,158,80,.085) 20%,
+      rgba(38,54,35,.065) 40%,
+      rgba(7,11,9,.94) 70%,
+      #030506 100%
+    );
+
+  text-align:center;
+
+  isolation:isolate;
+  overflow:visible;
+
+  z-index:4;
+
+  box-shadow:
+    0 0 16px rgba(217,255,98,.14),
+    0 0 38px rgba(217,255,98,.11),
+    0 0 75px rgba(217,255,98,.075),
+    0 0 120px rgba(217,255,98,.035),
+    inset 0 0 38px rgba(217,255,98,.055),
+    inset 0 0 90px rgba(0,0,0,.92);
+
+  animation:nocturneHudBreath 5s ease-in-out infinite;
 }
 
-/* One understated scrollbar language across the game dashboard. */
-#game #people::-webkit-scrollbar,
-#game #locations::-webkit-scrollbar,
-#game #events::-webkit-scrollbar,
-#game #chat::-webkit-scrollbar{
-  width:7px;
+
+/* Inner ring */
+#landing > .orb::before{
+  content:"";
+
+  position:absolute;
+  inset:16px;
+
+  border:1px solid rgba(217,255,98,.30);
+  border-radius:50%;
+
+  background:
+    radial-gradient(
+      circle,
+      transparent 55%,
+      rgba(217,255,98,.018) 72%,
+      rgba(217,255,98,.065) 100%
+    );
+
+  box-shadow:
+    inset 0 0 25px rgba(217,255,98,.035),
+    0 0 10px rgba(217,255,98,.10);
+
+  pointer-events:none;
+  z-index:1;
 }
 
-#game #people::-webkit-scrollbar-track,
-#game #locations::-webkit-scrollbar-track,
-#game #events::-webkit-scrollbar-track,
-#game #chat::-webkit-scrollbar-track{
-  background:#080a0d;
+
+/* Rotating outer radar ring */
+#landing > .orb::after{
+  content:"";
+
+  position:absolute;
+  inset:-11px;
+
+  border:1px dashed rgba(217,255,98,.38);
+  border-radius:50%;
+
+  box-shadow:
+    0 0 8px rgba(217,255,98,.16),
+    0 0 20px rgba(217,255,98,.08);
+
+  pointer-events:none;
+  z-index:2;
+
+  animation:nocturneRadarSpin 18s linear infinite;
 }
 
-#game #people::-webkit-scrollbar-thumb,
-#game #locations::-webkit-scrollbar-thumb,
-#game #events::-webkit-scrollbar-thumb,
-#game #chat::-webkit-scrollbar-thumb{
-  background:#59616b;
-  border-radius:999px;
-  border:1px solid #080a0d;
+
+/* =========================================================
+   HUD CONTENT
+   ========================================================= */
+
+#landing > .orb > div{
+  position:relative;
+
+  z-index:6;
+
+  width:100%;
+  height:100%;
+
+  display:flex;
+  flex-direction:column;
+
+  align-items:center;
+  justify-content:center;
+
+  gap:7px;
+
+  text-align:center;
 }
 
-#game #people::-webkit-scrollbar-thumb:hover,
-#game #locations::-webkit-scrollbar-thumb:hover,
-#game #events::-webkit-scrollbar-thumb:hover,
-#game #chat::-webkit-scrollbar-thumb:hover{
-  background:#7b838d;
+
+/* Horizontal scanner */
+#landing > .orb > div::before{
+  content:"";
+
+  position:absolute;
+
+  left:-100px;
+  right:-100px;
+
+  top:50%;
+
+  height:1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      transparent 17%,
+      rgba(217,255,98,.04) 28%,
+      rgba(217,255,98,.20) 40%,
+      rgba(217,255,98,.88) 49%,
+      rgba(217,255,98,.88) 51%,
+      rgba(217,255,98,.20) 60%,
+      rgba(217,255,98,.04) 72%,
+      transparent 83%,
+      transparent 100%
+    );
+
+  box-shadow:
+    0 0 5px rgba(217,255,98,.60),
+    0 0 15px rgba(217,255,98,.25);
+
+  pointer-events:none;
 }
 
-/* Live-feed marker. It does not alter event spacing. */
-#game .eventLiveDot{
-  display:inline-block;
+
+/* Vertical scanner */
+#landing > .orb > div::after{
+  content:"";
+
+  position:absolute;
+
+  top:-100px;
+  bottom:-100px;
+
+  left:50%;
+
+  width:1px;
+
+  background:
+    linear-gradient(
+      180deg,
+      transparent 0%,
+      transparent 17%,
+      rgba(217,255,98,.04) 28%,
+      rgba(217,255,98,.20) 40%,
+      rgba(217,255,98,.88) 49%,
+      rgba(217,255,98,.88) 51%,
+      rgba(217,255,98,.20) 60%,
+      rgba(217,255,98,.04) 72%,
+      transparent 83%,
+      transparent 100%
+    );
+
+  box-shadow:
+    0 0 5px rgba(217,255,98,.60),
+    0 0 15px rgba(217,255,98,.25);
+
+  pointer-events:none;
+}
+
+
+/* CASE ENGINE remains plain text */
+#landing > .orb span{
+  position:relative;
+  z-index:7;
+
+  color:#b9c5b7;
+
+  font-family:"IBM Plex Mono",monospace;
+  font-size:10px;
+
+  text-shadow:
+    0 0 7px rgba(217,255,98,.16),
+    0 0 15px rgba(217,255,98,.06);
+}
+
+
+/* READY */
+#landing > .orb b{
+  position:relative;
+  z-index:7;
+
+  color:#d9ff62;
+
+  font-size:22px;
+  letter-spacing:.08em;
+
+  text-shadow:
+    0 0 5px rgba(217,255,98,.95),
+    0 0 12px rgba(217,255,98,.78),
+    0 0 25px rgba(217,255,98,.52),
+    0 0 45px rgba(217,255,98,.22);
+
+  animation:nocturneReadyGlow 2.8s ease-in-out infinite;
+}
+
+
+/* Player count */
+#landing > .orb small{
+  position:relative;
+  z-index:7;
+
+  color:#aab8a5;
+
+  font-family:"IBM Plex Mono",monospace;
+  font-size:10px;
+
+  text-shadow:
+    0 0 7px rgba(217,255,98,.14);
+}
+
+
+/* Top radar node */
+#landing > .orb > div > span::before{
+  content:"";
+
+  position:absolute;
+
+  width:6px;
+  height:6px;
+
+  left:50%;
+  top:-78px;
+
+  transform:translateX(-50%);
+
+  border-radius:50%;
+
+  background:#d9ff62;
+
+  box-shadow:
+    0 0 4px #d9ff62,
+    0 0 10px #d9ff62,
+    0 0 22px rgba(217,255,98,.80),
+    0 0 38px rgba(217,255,98,.35);
+
+  animation:nocturneNodePulse 2.2s ease-in-out infinite;
+}
+
+
+/* Bottom radar node */
+#landing > .orb > div > span::after{
+  content:"";
+
+  position:absolute;
+
   width:5px;
   height:5px;
-  margin-right:6px;
-  vertical-align:middle;
+
+  left:50%;
+  bottom:-78px;
+
+  transform:translateX(-50%);
+
   border-radius:50%;
-  background:#59636f;
+
+  background:#d9ff62;
+
+  box-shadow:
+    0 0 4px #d9ff62,
+    0 0 10px rgba(217,255,98,.85),
+    0 0 24px rgba(217,255,98,.40);
+
+  animation:nocturneNodePulse 2.2s ease-in-out infinite reverse;
 }
 
-#game .eventLiveDot.live{
-  background:var(--accent);
-  box-shadow:0 0 8px rgba(217,255,98,.65);
-  animation:finalEventPulse 1.5s ease-in-out infinite;
+
+/* =========================================================
+   GREEN ATMOSPHERE
+   ========================================================= */
+
+#landing > .orb{
+  --hud-glow:rgba(217,255,98,.14);
 }
 
-#game .event.LIVE{
-  border-left-color:var(--accent);
-  background:rgba(217,255,98,.025);
+
+/* Large soft aura */
+#landing .hero + .orb{
+  /* keeps the actual orb above its atmospheric glow */
+  filter:none;
 }
 
-#game .event.LIVE p{
-  color:#e8f0df;
+
+/* The atmosphere is created without changing layout geometry. */
+#landing::before{
+  content:"";
+
+  position:absolute;
+
+  width:600px;
+  height:600px;
+
+  right:calc(2.5% - 150px);
+  top:50%;
+
+  transform:translateY(-50%);
+
+  border-radius:50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(217,255,98,.085) 0%,
+      rgba(217,255,98,.048) 22%,
+      rgba(217,255,98,.022) 43%,
+      rgba(217,255,98,.008) 61%,
+      transparent 75%
+    );
+
+  filter:blur(22px);
+
+  opacity:.85;
+
+  pointer-events:none;
+
+  z-index:1;
+
+  animation:nocturneAtmosphere 5.5s ease-in-out infinite;
 }
 
-@keyframes finalEventPulse{
-  0%,100%{opacity:.45;transform:scale(.8)}
-  50%{opacity:1;transform:scale(1.15)}
+
+/* Smaller concentrated glow */
+#landing::after{
+  content:"";
+
+  position:absolute;
+
+  width:390px;
+  height:390px;
+
+  right:calc(2.5% - 45px);
+  top:50%;
+
+  transform:translateY(-50%);
+
+  border-radius:50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(217,255,98,.085) 0%,
+      rgba(217,255,98,.040) 35%,
+      transparent 70%
+    );
+
+  filter:blur(15px);
+
+  opacity:.70;
+
+  pointer-events:none;
+
+  z-index:1;
+
+  animation:nocturneOuterGlow 5.5s ease-in-out infinite;
 }
 
-/* Keep the game columns balanced at medium desktop widths. */
-@media(max-width:1050px){
-  #game .grid{
-    grid-template-columns:220px minmax(0,1fr);
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+
+@keyframes nocturneHudBreath{
+  0%,100%{
+    box-shadow:
+      0 0 16px rgba(217,255,98,.11),
+      0 0 38px rgba(217,255,98,.08),
+      0 0 75px rgba(217,255,98,.055),
+      0 0 120px rgba(217,255,98,.025),
+      inset 0 0 38px rgba(217,255,98,.045),
+      inset 0 0 90px rgba(0,0,0,.92);
   }
 
-  #game #rightSide{
-    grid-column:1/-1;
+  50%{
+    box-shadow:
+      0 0 23px rgba(217,255,98,.20),
+      0 0 52px rgba(217,255,98,.13),
+      0 0 100px rgba(217,255,98,.085),
+      0 0 145px rgba(217,255,98,.045),
+      inset 0 0 50px rgba(217,255,98,.075),
+      inset 0 0 90px rgba(0,0,0,.88);
   }
 }
 
-/* Mobile behavior remains the original NOCTURNE layout. */
+
+@keyframes nocturneRadarSpin{
+  from{transform:rotate(0deg);}
+  to{transform:rotate(360deg);}
+}
+
+
+@keyframes nocturneReadyGlow{
+  0%,100%{
+    text-shadow:
+      0 0 5px rgba(217,255,98,.78),
+      0 0 12px rgba(217,255,98,.58),
+      0 0 25px rgba(217,255,98,.28);
+  }
+
+  50%{
+    text-shadow:
+      0 0 6px rgba(217,255,98,1),
+      0 0 15px rgba(217,255,98,.90),
+      0 0 30px rgba(217,255,98,.60),
+      0 0 48px rgba(217,255,98,.22);
+  }
+}
+
+
+@keyframes nocturneNodePulse{
+  0%,100%{
+    opacity:.45;
+  }
+
+  50%{
+    opacity:1;
+  }
+}
+
+
+@keyframes nocturneAtmosphere{
+  0%,100%{
+    opacity:.48;
+  }
+
+  50%{
+    opacity:.82;
+  }
+}
+
+
+@keyframes nocturneOuterGlow{
+  0%,100%{
+    opacity:.42;
+  }
+
+  50%{
+    opacity:.72;
+  }
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media(max-width:1100px){
+
+  #landing > .orb{
+    width:270px;
+    height:270px;
+    right:1.5%;
+  }
+
+  #landing::before{
+    right:calc(1.5% - 130px);
+  }
+
+  #landing::after{
+    right:calc(1.5% - 35px);
+  }
+}
+
+
 @media(max-width:760px){
-  #game .grid{
-    display:block;
+
+  #landing{
+    min-height:auto;
+    height:auto;
+    overflow:hidden;
   }
 
-  #game #people,
-  #game #locations{
-    max-height:300px;
+  #landing .hero{
+    position:relative;
   }
 
-  #game #events{
-    max-height:420px;
+  #landing > .orb{
+    position:relative;
+
+    width:250px;
+    height:250px;
+
+    top:auto;
+    right:auto;
+    bottom:auto;
+    left:auto;
+
+    transform:none;
+
+    margin:40px auto 20px;
   }
 
-  #game #chat{
-    height:260px;
+  #landing::before{
+    width:430px;
+    height:430px;
+
+    right:50%;
+    top:auto;
+    bottom:-25px;
+
+    transform:translateX(50%);
+  }
+
+  #landing::after{
+    width:310px;
+    height:310px;
+
+    right:50%;
+    top:auto;
+    bottom:5px;
+
+    transform:translateX(50%);
+  }
+
+  #landing > .orb > div::before{
+    left:-65px;
+    right:-65px;
+  }
+
+  #landing > .orb > div::after{
+    top:-65px;
+    bottom:-65px;
+  }
+}
+
+
+@media(max-width:520px){
+
+  #landing > .orb{
+    width:220px;
+    height:220px;
+  }
+
+  #landing > .orb > div > span::before{
+    top:-62px;
+  }
+
+  #landing > .orb > div > span::after{
+    bottom:-62px;
+  }
+}
+
+
+/* Prevent decorative HUD layers from ever creating page-level overflow. */
+html,
+body{
+  overflow-x:hidden;
+}
+
+
+/* =========================================================
+   NOCTURNE LOCATIONS PANEL
+   FINAL ALIGNMENT FIX
+   ========================================================= */
+
+/* Keep Locations visually aligned with the People panel. */
+.panel.locations,
+.locations{
+  width:100%;
+  box-sizing:border-box;
+}
+
+/* Header spacing and typography */
+.locations h3,
+.locations .panelTitle,
+.locations .panelHead{
+  box-sizing:border-box;
+}
+
+/* Location list uses the same readable card rhythm as People. */
+.locations .loc,
+.locations .location,
+.locations .locationCard{
+  box-sizing:border-box;
+  width:100%;
+  padding:18px 20px;
+  margin:0;
+  border-bottom:1px solid var(--line);
+}
+
+/* Location name */
+.locations .loc b,
+.locations .location b,
+.locations .locationCard b,
+.locations .loc strong,
+.locations .location strong,
+.locations .locationCard strong{
+  display:block;
+  font-size:16px;
+  line-height:1.35;
+  font-weight:700;
+  color:var(--text);
+  margin:0 0 5px;
+}
+
+/* "currently present" line */
+.locations .loc span,
+.locations .location span,
+.locations .locationCard span{
+  display:block;
+  font-size:11px;
+  line-height:1.45;
+  color:var(--muted);
+}
+
+/* If the location component itself is the scroll container,
+   keep the scrollbar inside the panel without squeezing cards. */
+.locations{
+  overflow:hidden;
+}
+
+.locations .list,
+.locations .locationList,
+.locations .locList{
+  overflow-y:auto;
+  overflow-x:hidden;
+  box-sizing:border-box;
+  width:100%;
+}
+
+/* Slim scrollbar that matches the rest of NOCTURNE. */
+.locations ::-webkit-scrollbar{
+  width:10px;
+}
+
+.locations ::-webkit-scrollbar-track{
+  background:#080a0d;
+  border-left:1px solid var(--line);
+}
+
+.locations ::-webkit-scrollbar-thumb{
+  background:#6f747b;
+  border-radius:8px;
+  border:2px solid #080a0d;
+}
+
+.locations ::-webkit-scrollbar-thumb:hover{
+  background:#90969d;
+}
+
+/* Firefox */
+.locations{
+  scrollbar-width:auto;
+  scrollbar-color:#6f747b #080a0d;
+}
+
+/* Match the People card spacing on narrower screens. */
+@media(max-width:820px){
+  .locations .loc,
+  .locations .location,
+  .locations .locationCard{
+    padding:16px 16px;
+  }
+
+  .locations .loc b,
+  .locations .location b,
+  .locations .locationCard b,
+  .locations .loc strong,
+  .locations .location strong,
+  .locations .locationCard strong{
+    font-size:15px;
+  }
+}
+
+/* =========================================================
+   LOCATIONS PANEL ALIGNMENT
+   Match the PEOPLE panel structure exactly.
+   The HTML uses:
+     <div class="panel">
+       <h3>LOCATIONS</h3>
+       <div id="locations" class="scrollList">...</div>
+     </div>
+   ========================================================= */
+
+/* The Locations wrapper is a normal .panel, so target the panel
+   that actually contains #locations. */
+.panel:has(> #locations){
+  overflow:hidden;
+}
+
+/* Make LOCATIONS use the same header geometry as PEOPLE's .panelTitle. */
+.panel:has(> #locations) > h3{
+  display:block;
+  box-sizing:border-box;
+
+  width:100%;
+  margin:0;
+  padding:17px 19px;
+
+  border-bottom:1px solid var(--line);
+
+  color:#e9edf2;
+  font-family:"IBM Plex Mono",monospace;
+  font-size:12px;
+  font-weight:600;
+  line-height:1.2;
+  letter-spacing:.11em;
+}
+
+/* The location list itself should use the exact same scroll behavior
+   and width as the People list. */
+.panel:has(> #locations) > #locations{
+  display:block;
+  width:100%;
+  max-height:300px;
+
+  box-sizing:border-box;
+
+  overflow-y:auto;
+  overflow-x:hidden;
+
+  padding:7px 0;
+}
+
+/* Use the existing shared .loc geometry. These overrides only ensure
+   Locations does not inherit a different experimental spacing rule. */
+.panel:has(> #locations) > #locations .loc{
+  box-sizing:border-box;
+  width:100%;
+  padding:14px 17px;
+  margin:0;
+
+  border-bottom:1px solid rgba(255,255,255,.055);
+}
+
+.panel:has(> #locations) > #locations .loc:last-child{
+  border-bottom:0;
+}
+
+.panel:has(> #locations) > #locations .loc > b{
+  display:flex;
+  align-items:center;
+  gap:8px;
+
+  margin:4px 0;
+
+  color:#fff;
+  font-size:17px;
+  line-height:1.35;
+  font-weight:700;
+}
+
+.panel:has(> #locations) > #locations .loc > span{
+  display:block;
+
+  color:#98a2ae;
+  font-family:"IBM Plex Mono",monospace;
+  font-size:11px;
+  line-height:1.45;
+  letter-spacing:.025em;
+}
+
+/* Match the People scrollbar. */
+.panel:has(> #locations) > #locations::-webkit-scrollbar{
+  width:10px;
+}
+
+.panel:has(> #locations) > #locations::-webkit-scrollbar-track{
+  background:#080a0d;
+  border-left:1px solid var(--line);
+}
+
+.panel:has(> #locations) > #locations::-webkit-scrollbar-thumb{
+  background:#6f747b;
+  border-radius:8px;
+  border:2px solid #080a0d;
+}
+
+.panel:has(> #locations) > #locations::-webkit-scrollbar-thumb:hover{
+  background:#90969d;
+}
+
+/* Keep both panels visually identical on smaller screens. */
+@media(max-width:480px){
+  .panel:has(> #locations) > h3{
+    padding:17px 19px;
+    font-size:12px;
+  }
+
+  .panel:has(> #locations) > #locations .loc{
+    padding:14px 17px;
+  }
+
+  .panel:has(> #locations) > #locations .loc > b{
+    font-size:16px;
   }
 }
