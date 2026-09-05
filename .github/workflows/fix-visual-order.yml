@@ -1,0 +1,44 @@
+name: Fix visual evidence variable order
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Move visual prompt context before prompt construction
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('nocturne-vercel-3.5/backend/server/game.js')
+          s=p.read_text()
+          start=s.find('      const photoClueModes = [')
+          end=s.find('      const negativePrompt =', start)
+          prompt=s.find('      const prompt =', 0)
+          if min(start,end,prompt) < 0 or not (prompt < start < end):
+              raise SystemExit('Could not locate visual context block')
+          block=s[start:end]
+          s=s[:start]+s[end:]
+          prompt=s.find('      const prompt =', 0)
+          s=s[:prompt]+block+'\n'+s[prompt:]
+          p.write_text(s)
+          PY
+      - name: Validate
+        run: |
+          node --check nocturne-vercel-3.5/backend/server/game.js
+          node --check nocturne-vercel-3.5/backend/server/comfy-client.js
+          git diff --check
+      - name: Commit and remove workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nocturne-vercel-3.5/backend/server/game.js
+          git commit -m 'Fix visual prompt context order'
+          git push
+          git rm .github/workflows/fix-visual-order.yml
+          git commit -m 'Remove temporary visual order workflow'
+          git push
