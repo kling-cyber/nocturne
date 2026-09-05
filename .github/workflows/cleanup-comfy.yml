@@ -1,0 +1,40 @@
+name: Clean NOCTURNE ComfyUI image code
+on:
+  push:
+    branches: [main]
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove dead Gemini branch from game runtime
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('nocturne-vercel-3.5/backend/server/game.js')
+          s = p.read_text()
+          start = s.find('      } else if (false) {')
+          end = s.find('      const description =', start)
+          if start < 0 or end < 0:
+              raise SystemExit('Dead image fallback block not found')
+          s = s[:start] + '      }\n\n' + s[end:]
+          s = s.replace('engine=${comfy.configured ? "ComfyUI" : "Gemini"}', 'engine=ComfyUI')
+          s = s.replace('"[NOCTURNE] Image model:"', '"[NOCTURNE] ComfyUI checkpoint:"')
+          p.write_text(s)
+          print('Dead Gemini image branch removed')
+          PY
+      - name: Validate
+        run: |
+          node --check nocturne-vercel-3.5/backend/server/game.js
+          node --check nocturne-vercel-3.5/backend/server/comfy-client.js
+          git diff --check
+      - name: Commit and remove workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nocturne-vercel-3.5/backend/server/game.js
+          git rm .github/workflows/cleanup-comfy.yml
+          git commit -m 'Remove dead Gemini visual fallback'
+          git push
