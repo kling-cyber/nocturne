@@ -1,0 +1,61 @@
+name: NOCTURNE ComfyUI runtime final
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply runtime fix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('nocturne-vercel-3.5/backend/server/game.js')
+          s = p.read_text()
+
+          blocks = [
+          '''const geminiApiKey =
+            String(process.env.GEMINI_API_KEY || "").trim();
+
+          ''',
+          '''const geminiImageAi =
+            OpenAI && geminiApiKey
+              ? new OpenAI({
+                  apiKey: geminiApiKey,
+                  baseURL:
+                    "https://generativelanguage.googleapis.com/v1beta/openai/"
+                })
+              : null;
+
+          ''',
+          '''const IMG =
+            process.env.GEMINI_IMAGE_MODEL ||
+            "gemini-2.5-flash-image";
+
+          '''
+          ]
+          for block in blocks:
+              s = s.replace(block, '', 1)
+
+          s = s.replace('if (!geminiImageAi) {', 'if (!comfy.configured) {', 1)
+          s = s.replace('[NOCTURNE] Image generation unavailable.', '[NOCTURNE] ComfyUI image generation unavailable.', 1)
+          s = s.replace('} else if (geminiImageAi) {', '} else if (false) {', 1)
+          s = s.replace('let imageSource = "Gemini";', 'let imageSource = "ComfyUI";', 1)
+          s = s.replace('model: IMG,', 'model: "disabled",', 1)
+
+          p.write_text(s)
+          print('runtime patch complete')
+          PY
+      - name: Validate
+        run: node --check nocturne-vercel-3.5/backend/server/game.js
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nocturne-vercel-3.5/backend/server/game.js
+          git diff --cached --quiet || git commit -m 'Fix ComfyUI visual generation runtime'
+          git push
