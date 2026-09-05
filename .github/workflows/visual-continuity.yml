@@ -1,0 +1,62 @@
+name: NOCTURNE visual continuity
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch game visual logic
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('nocturne-vercel-3.5/backend/server/game.js')
+          s=p.read_text()
+
+          s=s.replace('    this.cameras = [];\n\n    this.make(players, options);', '    this.cameras = [];\n    this.cameraFrames = new Map();\n\n    this.make(players, options);', 1)
+
+          old='''    this.imageBusy =\n      true;\n\n\n    const type ='''
+          new='''    this.imageBusy =\n      true;\n\n\n    // A visual request advances the simulated clock by one minute so repeated\n    // captures from the same fixed camera represent the passage of time.\n    this.tick(1);\n\n\n    const type ='''
+          if old not in s: raise SystemExit('imageBusy anchor missing')
+          s=s.replace(old,new,1)
+
+          old='''    const negativePrompt =\n        "blurry, low quality, distorted, deformed, bad anatomy, extra limbs, text, watermark, cinematic poster, illustration, fantasy environment, generic location";\n\n      let image;\n      let imageSource = "ComfyUI";'''
+          new='''    const photoClueModes = [\n      "a mundane object subtly out of place, with no obvious reason for its position",\n      "a partially obscured reflection or background detail that creates a spatial inconsistency",\n      "a small environmental disturbance that could have several innocent explanations",\n      "a door, chair, drawer, curtain or cabinet left in a state that invites timeline questions",\n      "a faint trace-like environmental detail that is easy to dismiss without comparison to other evidence",\n      "a time-sensitive environmental detail such as lighting, equipment state or an unattended item",\n      "a subtle relationship between two ordinary objects that becomes meaningful only when cross-referenced with testimony",\n      "a partially visible detail at the edge of frame that is useful only when correlated with another observation"\n    ];\n\n    const photoClue =\n      photoClueModes[\n        Math.abs((this.t + this.seed.length) * 13) % photoClueModes.length\n      ];\n\n    const photoEvidenceRules =\n      type === "photo"\n        ? `\\n\\nDIFFICULT INDIRECT EVIDENCE RULES:\n- This photograph is an investigative evidence capture, not a clue card.\n- Include exactly one primary subtle anomaly: ${photoClue}.\n- Keep the anomaly small, naturally integrated and not centered for emphasis.\n- Never circle, highlight, label, explain or visually exaggerate the anomaly.\n- Surround it with believable mundane details so it can be mistaken for normal scene clutter.\n- Do not make the image itself reveal the Killer, motive, victim, weapon, sequence or answer.\n- Avoid readable text as the primary clue.\n- The investigator should need to compare this image with time, movement, testimony or another evidence source before its significance becomes clear.\n- Prefer ambiguity: the anomaly should support more than one plausible interpretation on first inspection.`\n        : "";\n\n      const cameraFrame =\n        type === "cctv"\n          ? this.cameraFrames.get(cameraId) || null\n          : null;\n\n      const continuityInstruction =\n        cameraFrame\n          ? `\\n\\nCONTINUITY FRAME: A previous frame from this exact camera exists and will be supplied as the source image. Preserve the architecture, walls, floor, doors, furniture, fixed objects, camera height, lens geometry and overall composition. The passage of time should primarily change transient people, positions and small temporary details. Do not redesign the location.`\n          : "";\n\n      const negativePrompt =\n        "blurry, low quality, distorted, deformed, bad anatomy, extra limbs, text, watermark, cinematic poster, illustration, fantasy environment, generic location, redesigned architecture, changed camera angle";\n\n      let image;\n      let imageSource = "ComfyUI";'''
+          if old not in s: raise SystemExit('negative prompt anchor missing')
+          s=s.replace(old,new,1)
+
+          old='''The image should look like imperfect fictional evidence.\n\nIt may contain plausible visual observations, but it must not assert hidden case truth.`;'''
+          new='''The image should look like imperfect fictional evidence.\n\nIt may contain plausible visual observations, but it must not assert hidden case truth.${photoEvidenceRules}${continuityInstruction}`;'''
+          if old not in s: raise SystemExit('prompt ending missing')
+          s=s.replace(old,new,1)
+
+          old='''            caseSeed: this.seed,\n            cameraId,\n            type\n          });'''
+          new='''            caseSeed: this.seed,\n            cameraId,\n            type,\n            capture: this.t,\n            initImage: cameraFrame\n          });'''
+          if old not in s: raise SystemExit('comfy request args missing')
+          s=s.replace(old,new,1)
+
+          old='''        image = generated.image;\n        imageSource = "ComfyUI";'''
+          new='''        image = generated.image;\n        imageSource = "ComfyUI";\n\n        if (type === "cctv") {\n          this.cameraFrames.set(cameraId, {\n            image: generated.image,\n            buffer: generated.buffer,\n            filename: generated.filename,\n            subfolder: generated.subfolder || "",\n            type: generated.type || "output"\n          });\n        }'''
+          if old not in s: raise SystemExit('generated image anchor missing')
+          s=s.replace(old,new,1)
+
+          p.write_text(s)
+          PY
+      - name: Validate
+        run: |
+          node --check nocturne-vercel-3.5/backend/server/game.js
+          git diff --check
+      - name: Remove workflow after successful patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nocturne-vercel-3.5/backend/server/game.js
+          git commit -m 'Add realistic CCTV continuity and indirect photo evidence'
+          git push
+          git rm .github/workflows/visual-continuity.yml
+          git commit -m 'Remove temporary visual continuity workflow'
+          git push
