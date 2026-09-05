@@ -47,7 +47,7 @@ io.on("connection",socket=>{
     const asset=result.asset;
     const title=asset.cameraId+' // '+asset.kind.toUpperCase()+' // '+asset.clock;
     const description=asset.kind==='cctv'?'Directly generated CCTV evidence from '+asset.area+'. The image was generated on demand by the local GPU.':'Directly generated investigative scene photograph from '+asset.area+'. It is an observation, not automatic truth.';
-    room.sim.add({type:'visual',title,description,reliability:asset.kind==='cctv'?75:65,source:asset.cameraId,visualAssetId:asset.id});
+    room.sim.add({type:'visual',title,description,reliability:asset.kind==='cctv'?75:65,source:asset.cameraId,visualAssetId:asset.id,image:asset.image});
     room.sim.event('VISUAL',actor.name+' generated '+asset.kind.toUpperCase()+' evidence from '+asset.cameraId+'.');
     socket.emit('visualReady',{title,description,reliability:asset.kind==='cctv'?75:65,image:asset.image});
     room.sim.emit();
