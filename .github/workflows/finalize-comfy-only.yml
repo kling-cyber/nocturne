@@ -1,4 +1,4 @@
-name: Finalize NOCTURNE ComfyUI only
+name: Finalize NOCTURNE ComfyUI runtime
 on:
   push:
     branches: [main]
@@ -10,79 +10,139 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Remove remaining Gemini image code
+      - name: Patch game runtime only
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
 
-          p = Path('nocturne-vercel-3.5/backend/server/game.js')
-          s = p.read_text()
+          game = Path('nocturne-vercel-3.5/backend/server/game.js')
+          s = game.read_text()
 
-          # Remove stale Gemini diagnostic log statements from the unavailable branch.
-          s = re.sub(r'\n\s*console\.error\(\s*"\[NOCTURNE\] GEMINI_API_KEY present:",\s*!!geminiApiKey\s*\);', '', s, count=1, flags=re.S)
-          s = re.sub(r'\n\s*console\.error\(\s*"\[NOCTURNE\] Image model:",\s*IMG\s*\);', '', s, count=1, flags=re.S)
+          start_marker = '    /*\n     * STEP 1'
+          end_marker = '      const description ='
+          start = s.find(start_marker)
+          end = s.find(end_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit('visual engine block not found')
 
-          # Remove the now-dead else-if(false) branch by matching its braces safely.
-          marker = '} else if (false) {'
-          start = s.find(marker)
-          if start != -1:
-              open_brace = s.find('{', start + len(marker))
-              depth = 1
-              i = open_brace + 1
-              state = 'code'
-              while i < len(s) and depth:
-                  c = s[i]
-                  n = s[i + 1] if i + 1 < len(s) else ''
-                  if state == 'code':
-                      if c == '/' and n == '/': state = 'line'; i += 2; continue
-                      if c == '/' and n == '*': state = 'block'; i += 2; continue
-                      if c == "'": state = 'single'; i += 1; continue
-                      if c == '"': state = 'double'; i += 1; continue
-                      if c == '`': state = 'template'; i += 1; continue
-                      if c == '{': depth += 1
-                      elif c == '}': depth -= 1
-                      i += 1
-                  elif state == 'line':
-                      if c == '\n': state = 'code'
-                      i += 1
-                  elif state == 'block':
-                      if c == '*' and n == '/': state = 'code'; i += 2
-                      else: i += 1
-                  elif state == 'single':
-                      if c == '\\': i += 2
-                      elif c == "'": state = 'code'; i += 1
-                      else: i += 1
-                  elif state == 'double':
-                      if c == '\\': i += 2
-                      elif c == '"': state = 'code'; i += 1
-                      else: i += 1
-                  else:
-                      if c == '\\': i += 2
-                      elif c == '`': state = 'code'; i += 1
-                      else: i += 1
-              if depth:
-                  raise SystemExit('Could not match Gemini branch braces')
-              s = s[:start] + '}' + s[i:]
+          replacement = '''    try {
 
-          # Ensure image generation is explicitly ComfyUI-only.
-          if 'gemini' in s.lower() or 'GEMINI_' in s:
-              raise SystemExit('Gemini image code still remains')
-          if 'comfy.configured' not in s or 'comfy.request' not in s:
-              raise SystemExit('ComfyUI image path missing')
+      console.log(
+        `[NOCTURNE] Image request started. engine=ComfyUI, type=${type}, setting=${this.world[0]}, area=${evidenceArea}`
+      );
 
-          p.write_text(s)
-          print('Final ComfyUI-only game configuration complete')
+      const prompt =
+        `Create a fictional, non-graphic evidence image for the NOCTURNE murder-mystery game.
+
+This is ${
+          type === "photo"
+            ? "an investigative scene photograph"
+            : "a security camera still"
+        }.
+
+Setting:
+${this.world[0]}
+
+Available case locations:
+${this.world[1].join(", ")}
+
+Evidence area:
+${evidenceArea}
+
+Camera ID:
+${camera?.id || "not applicable"}
+
+Camera position:
+${camera?.position || "handheld investigator camera"}
+
+Camera view:
+${camera?.view || "documentary scene view"}
+
+Simulated case time:
+${this.clock()}
+
+Visual direction:
+- the venue and evidence area must match the generated case exactly
+- use only architecture, furniture and environmental objects plausible for this venue and area
+- do not substitute a generic location
+- imperfect lighting appropriate to the area
+- subtle sensor noise and realistic optical imperfections
+- restrained documentary framing
+- ambiguous but useful visual details
+- not a cinematic poster
+
+CCTV continuity rules:
+- if this is CCTV, keep the camera physically fixed
+- preserve the same camera position, direction, lens character and environmental layout for repeated frames from this camera
+- allow people, doors, small objects and transient events to change naturally between frames
+- never move the camera or change the room into another location
+
+Do not show:
+- gore
+- a corpse
+- violence
+- real people
+- celebrities
+- logos
+- readable credentials
+- real-world identifying information
+
+The image should look like imperfect fictional evidence.
+
+It may contain plausible visual observations, but it must not assert hidden case truth.`;
+
+      const negativePrompt =
+        "blurry, low quality, distorted, deformed, bad anatomy, extra limbs, text, watermark, cinematic poster, illustration, fantasy environment, generic location";
+
+      console.log(
+        `[NOCTURNE] Sending image workflow to local ComfyUI. checkpoint=${comfy.CHECKPOINT}`
+      );
+
+      const generated =
+        await comfy.request({
+          prompt,
+          negativePrompt,
+          caseSeed: this.seed,
+          cameraId,
+          type
+        });
+
+      const image = generated.image;
+
+      console.log(
+        `[NOCTURNE] ComfyUI image completed. prompt_id=${generated.promptId}`
+      );
+
+'''
+
+          s = s[:start] + replacement + s[end:]
+
+          old_log = '''      console.error(
+        "[NOCTURNE] Gemini image model:",
+        IMG
+      );'''
+          new_log = '''      console.error(
+        "[NOCTURNE] ComfyUI checkpoint:",
+        comfy.CHECKPOINT
+      );'''
+          s = s.replace(old_log, new_log, 1)
+
+          if 'gemini' in s.lower() or 'GEMINI_' in s or '\\bIMG\\b' in s:
+              raise SystemExit('Gemini image code remains in game.js')
+
+          game.write_text(s)
+          print('game.js is now ComfyUI-only')
           PY
       - name: Validate backend
         run: |
           node --check nocturne-vercel-3.5/backend/server/game.js
+          node --check nocturne-vercel-3.5/backend/server/comfy-client.js
           git diff --check
-      - name: Remove temporary patch workflows and commit
+      - name: Commit and remove temporary workflows
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git rm -f .github/workflows/fix-comfy-only.yml .github/workflows/comfy-only-fix2.yml .github/workflows/comfy-only-fix3.yml .github/workflows/comfy-runtime-fix.yml .github/workflows/comfy-runtime-fix-final.yml .github/workflows/finalize-comfy-only.yml || true
-          git add nocturne-vercel-3.5/backend/server/game.js
+          git add nocturne-vercel-3.5/backend/server/game.js nocturne-vercel-3.5/backend/server/comfy-client.js
+          git rm -f .github/workflows/fix-comfy-only.yml .github/workflows/comfy-only-fix2.yml .github/workflows/comfy-only-fix3.yml .github/workflows/comfy-runtime-fix.yml .github/workflows/comfy-runtime-fix-final.yml .github/workflows/final-comfy-fix.yml .github/workflows/finalize-comfy-only.yml 2>/dev/null || true
           git commit -m 'Finalize ComfyUI-only visual evidence engine'
           git push
