@@ -1,0 +1,62 @@
+name: Final ComfyUI-only image patch
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch game.js
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('nocturne-vercel-3.5/backend/server/game.js')
+          s = p.read_text()
+
+          # Remove Gemini image configuration only. Keep OpenAI text AI untouched.
+          s = re.sub(r'\nconst geminiApiKey\s*=.*?\n\s*String\(process\.env\.GEMINI_API_KEY \|\| ""\)\.trim\(\);\n', '\n', s, count=1, flags=re.S)
+          s = re.sub(r'\nconst geminiImageAi\s*=.*?\n\s*\}\);\n', '\n', s, count=1, flags=re.S)
+          s = s.replace('\nconst IMG =\n  process.env.GEMINI_IMAGE_MODEL ||\n  "gemini-2.5-flash-image";\n', '\n', 1)
+
+          # Make the existing visual gate depend on ComfyUI.
+          s = s.replace('if (!geminiImageAi) {', 'if (!comfy.configured) {', 1)
+          s = s.replace('[NOCTURNE] Image generation unavailable.', '[NOCTURNE] ComfyUI image generation unavailable.', 1)
+
+          # Remove the Gemini fallback branch without touching the UI or the rest of the simulation.
+          start = s.find('} else if (geminiImageAi) {')
+          if start == -1:
+              raise SystemExit('Gemini fallback branch not found')
+          end = s.find('if (!image)', start)
+          if end == -1:
+              raise SystemExit('image check after Gemini fallback not found')
+          s = s[:start] + '}\n\n    ' + s[end:]
+
+          s = s.replace('let imageSource = "Gemini";', 'let imageSource = "ComfyUI";', 1)
+
+          if 'geminiImageAi' in s or 'GEMINI_API_KEY' in s or 'GEMINI_IMAGE_MODEL' in s or 'gemini-2.5-flash-image' in s:
+              raise SystemExit('Gemini image code remains')
+          if 'comfy.configured' not in s or 'comfy.request' not in s:
+              raise SystemExit('ComfyUI image code missing')
+
+          p.write_text(s)
+          print('ComfyUI-only patch applied')
+          PY
+      - name: Validate
+        run: |
+          node --check nocturne-vercel-3.5/backend/server/game.js
+          git diff --check
+          ! grep -nE 'GEMINI|gemini|geminiImageAi|gemini-2.5' nocturne-vercel-3.5/backend/server/game.js
+          grep -n 'comfy.configured\|comfy.request' nocturne-vercel-3.5/backend/server/game.js
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nocturne-vercel-3.5/backend/server/game.js
+          git diff --cached --quiet || git commit -m 'Use ComfyUI only for visual evidence'
+          git push
