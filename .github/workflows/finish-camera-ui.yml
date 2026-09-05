@@ -1,0 +1,107 @@
+name: Finish dynamic camera UI
+
+on:
+  push:
+    paths:
+      - '.github/finish-camera-ui.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch camera UI safely
+        shell: python
+        run: |
+          from pathlib import Path
+
+          app = Path('nocturne-vercel-3.5/frontend/app.js')
+          text = app.read_text(encoding='utf-8')
+
+          visual_marker = '  /* VISUAL */'
+          visual_pos = text.find(visual_marker)
+          if visual_pos < 0:
+              raise SystemExit('VISUAL section not found')
+
+          needle = '        <div\n          class="visualbox"\n          id="visualbox"\n        >'
+          replacement = '''        <div class="cameraSelector" id="cameraSelector"></div>\n\n        <div\n          class="visualbox"\n          id="visualbox"\n        >'''
+          if 'id="cameraSelector"' not in text:
+              if needle not in text:
+                  raise SystemExit('visualbox markup not found')
+              text = text.replace(needle, replacement, 1)
+
+          # Replace the camera helper with a state-preserving version.
+          start = text.find('function renderCameraSelector(){')
+          if start < 0:
+              raise SystemExit('camera selector helper not found')
+          brace = text.find('{', start)
+          depth = 0
+          end = None
+          for i in range(brace, len(text)):
+              if text[i] == '{':
+                  depth += 1
+              elif text[i] == '}':
+                  depth -= 1
+                  if depth == 0:
+                      end = i + 1
+                      break
+          if end is None:
+              raise SystemExit('camera selector helper end not found')
+
+          helper = '''function renderCameraSelector(){\n  const box=$("cameraSelector");\n  if(!box)return;\n\n  const cams=Array.isArray(S?.cameras)?S.cameras:[];\n  const wanted=window.NOCTURNE_SELECTED_CAMERA||cams[0]?.id||"";\n\n  box.innerHTML=cams.map(c=>`<button class="cameraBtn ${c.id===wanted?"selected":""}" data-camera-id="${esc(c.id)}" onclick="selectCamera(this)">${esc(c.id)} · ${esc(c.area)}</button>`).join("");\n\n  if(cams.length&&!box.querySelector(".selected")){\n    box.querySelector("[data-camera-id]")?.classList.add("selected");\n  }\n}\n\nfunction selectCamera(btn){\n  document.querySelectorAll("[data-camera-id]").forEach(b=>b.classList.remove("selected"));\n  btn.classList.add("selected");\n  window.NOCTURNE_SELECTED_CAMERA=btn.dataset.cameraId||"";\n}\n'''
+          text = text[:start] + helper + text[end:]
+
+          # Make CCTV use the remembered selection, falling back to the first case camera.
+          old = '''    const selected = document.querySelector("[data-camera-id].selected");\n    const cameraId = selected?.dataset.cameraId || buttons[0].dataset.cameraId;'''
+          new = '''    const selected = document.querySelector("[data-camera-id].selected");\n    const cameraId = window.NOCTURNE_SELECTED_CAMERA || selected?.dataset.cameraId || buttons[0].dataset.cameraId;'''
+          if old in text:
+              text = text.replace(old, new, 1)
+
+          # Render the selector after the main render has rebuilt the visual panel.
+          render_start = text.find('function render(){')
+          if render_start < 0:
+              raise SystemExit('render function not found')
+          render_brace = text.find('{', render_start)
+          depth = 0
+          render_end = None
+          for i in range(render_brace, len(text)):
+              if text[i] == '{':
+                  depth += 1
+              elif text[i] == '}':
+                  depth -= 1
+                  if depth == 0:
+                      render_end = i
+                      break
+          if render_end is None:
+              raise SystemExit('render function end not found')
+          render_body = text[render_brace:render_end]
+          if 'renderCameraSelector();' not in render_body:
+              text = text[:render_end] + '\n\n  renderCameraSelector();' + text[render_end:]
+
+          app.write_text(text, encoding='utf-8')
+
+          css = Path('nocturne-vercel-3.5/frontend/styles.css')
+          c = css.read_text(encoding='utf-8')
+          if '.cameraSelector{' not in c:
+              c += '''\n\n.cameraSelector{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 10px}.cameraBtn{border:1px solid var(--line2);border-radius:7px;padding:8px 10px;background:#151a21;color:var(--soft);font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;letter-spacing:.03em;line-height:1.25;cursor:pointer}.cameraBtn:hover{border-color:var(--accent);color:var(--accent);background:#11161c}.cameraBtn.selected{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 1px rgba(217,255,98,.12) inset}@media(max-width:700px){.cameraSelector{gap:6px}.cameraBtn{font-size:9px;padding:7px 8px}}\n'''
+          css.write_text(c, encoding='utf-8')
+
+      - name: Validate
+        run: |
+          node --check nocturne-vercel-3.5/backend/server/game.js
+          node --check nocturne-vercel-3.5/frontend/app.js
+          git diff --check
+
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add nocturne-vercel-3.5/frontend/app.js nocturne-vercel-3.5/frontend/styles.css
+          git diff --cached --check
+          git commit -m "Finish dynamic camera UI" || exit 0
+          git push
