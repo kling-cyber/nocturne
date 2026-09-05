@@ -27,13 +27,13 @@ const STEPS =
   Number(process.env.COMFYUI_STEPS || 20);
 
 const CFG =
-  Number(process.env.COMFYUI_CFG || 7.5);
+  Number(process.env.COMFYUI_CFG || 8);
 
 const SAMPLER =
   String(process.env.COMFYUI_SAMPLER || "euler").trim();
 
 const SCHEDULER =
-  String(process.env.COMFYUI_SCHEDULER || "normal").trim();
+  String(process.env.COMFYUI_SCHEDULER || "simple").trim();
 
 const clean = (value, max = 7000) =>
   String(value ?? "")
@@ -119,6 +119,10 @@ async function request({ prompt, negativePrompt, caseSeed, cameraId, type }) {
   const clientId = crypto.randomUUID();
   const seed = seedFor(caseSeed, cameraId, type);
 
+  console.log(
+    `[NOCTURNE] ComfyUI request: ${type} ${cameraId} ${WIDTH}x${HEIGHT} steps=${STEPS} cfg=${CFG} sampler=${SAMPLER} scheduler=${SCHEDULER}`
+  );
+
   const response = await fetch(`${COMFY_URL}/prompt`, {
     method: "POST",
     headers: {
@@ -160,6 +164,8 @@ async function request({ prompt, negativePrompt, caseSeed, cameraId, type }) {
   if (!promptId) {
     throw new Error("ComfyUI did not return a prompt_id.");
   }
+
+  console.log(`[NOCTURNE] ComfyUI prompt accepted: ${promptId}`);
 
   return waitForImage(promptId);
 }
@@ -230,6 +236,10 @@ async function waitForImage(promptId) {
 
       const buffer = Buffer.from(
         await imageResponse.arrayBuffer()
+      );
+
+      console.log(
+        `[NOCTURNE] ComfyUI image retrieved: ${image.filename}`
       );
 
       return {
