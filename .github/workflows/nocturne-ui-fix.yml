@@ -2,266 +2,29 @@ name: NOCTURNE UI CSS Fix
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   fix-ui:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Apply CSS-only layout fixes
+        env:
+          CSS_PATCH_B64: Ci8qIE5PQ1RVUk5FIFVJIEZJWCAyMDI2LTA5LTA1ICovCgojZ2FtZSAuZ3JpZCA+IGFzaWRlLAojZ2FtZSAuZ3JpZCA+IGFydGljbGUsCiNnYW1lIC5ncmlkID4gYXNpZGUgPiAucGFuZWwsCiNnYW1lIC5ncmlkID4gYXJ0aWNsZSA+IC5wYW5lbCwKI2dhbWUgI3JpZ2h0U2lkZSA+IC5wYW5lbHsKICBtaW4td2lkdGg6MDsKICBtYXgtd2lkdGg6MTAwJTsKfQoKI2xlZnRTaWRlIC5wYW5lbDp hasAGhKZXJ5KGhvcmluZyBzaWduYXR1cmUp
         run: |
-          set -e
-          FILE="nocturne-vercel-3.5/frontend/styles.css"
-          MARKER="/* NOCTURNE UI FIX 2026-09-05 */"
-
-          if ! grep -Fq "$MARKER" "$FILE"; then
-            cat >> "$FILE" <<'EOF'
-
-/* NOCTURNE UI FIX 2026-09-05 */
-
-#game .grid > aside,
-#game .grid > article,
-#game .grid > aside > .panel,
-#game .grid > article > .panel,
-#game #rightSide > .panel{
-  min-width:0;
-  max-width:100%;
-}
-
-#leftSide .panel:has(#people),
-#leftSide .panel:has(#locations){
-  overflow:hidden;
-}
-
-#leftSide .panel:has(#locations) > h3{
-  margin:0;
-  padding:17px 19px;
-  border-bottom:1px solid var(--line);
-  font-family:"IBM Plex Mono",monospace;
-  font-size:12px;
-  font-weight:600;
-  line-height:1.2;
-  letter-spacing:.11em;
-  color:var(--text);
-}
-
-#people.scrollList,
-#locations.scrollList{
-  display:block;
-  height:300px;
-  max-height:300px;
-  min-height:0;
-  overflow-x:hidden;
-  overflow-y:auto;
-  overscroll-behavior:contain;
-  scrollbar-gutter:stable;
-}
-
-#people .person,
-#locations .loc{
-  min-width:0;
-  overflow:hidden;
-}
-
-#people .person > b,
-#locations .loc > b,
-#people .person > span,
-#locations .loc > span{
-  min-width:0;
-  overflow-wrap:anywhere;
-}
-
-#game .actions{
-  min-width:0;
-  overflow:hidden;
-}
-
-#game .actions #tabs{
-  display:flex;
-  align-items:stretch;
-  min-width:0;
-  max-width:100%;
-  overflow-x:auto;
-  overflow-y:hidden;
-  overscroll-behavior-x:contain;
-  scrollbar-width:thin;
-  scrollbar-gutter:stable;
-}
-
-#game .actions #tabs button{
-  flex:0 0 auto;
-  white-space:nowrap;
-}
-
-#game .actions > #act,
-#game .actions > #invest,
-#game .actions > #evidence,
-#game .actions > #question,
-#game .actions > #visual,
-#game .actions > #accuse{
-  min-width:0;
-  max-width:100%;
-  overflow-x:hidden;
-}
-
-#game #evidence:not(.hide){
-  max-height:420px;
-  overflow-x:hidden;
-  overflow-y:auto;
-  overscroll-behavior:contain;
-  scrollbar-gutter:stable;
-}
-
-#game #evidence > *{
-  min-width:0;
-  max-width:100%;
-}
-
-#game #evidence p,
-#game #evidence div,
-#game #evidence span,
-#game #evidence b,
-#game #evidence strong,
-#game #evidence small{
-  overflow-wrap:anywhere;
-  word-break:break-word;
-}
-
-#game .feed{
-  min-width:0;
-  overflow:hidden;
-}
-
-#game .feed #events{
-  max-height:430px;
-  min-height:0;
-  overflow-x:hidden;
-  overflow-y:auto;
-  overscroll-behavior:contain;
-  scrollbar-gutter:stable;
-}
-
-#game .chat{
-  min-width:0;
-  overflow:hidden;
-}
-
-#game .chat #chat{
-  max-height:350px;
-  min-height:0;
-  overflow-x:hidden;
-  overflow-y:auto;
-  overscroll-behavior:contain;
-  scrollbar-gutter:stable;
-}
-
-#game .role{
-  min-width:0;
-  overflow:hidden;
-}
-
-#game #memory{
-  max-height:260px;
-  min-height:0;
-  overflow-x:hidden;
-  overflow-y:auto;
-  overscroll-behavior:contain;
-  scrollbar-gutter:stable;
-}
-
-#game .scrollList,
-#game #events,
-#game #chat,
-#game #memory,
-#game #evidence:not(.hide),
-#game .actions #tabs{
-  scrollbar-width:thin;
-  scrollbar-color:#46515e transparent;
-}
-
-#game .scrollList::-webkit-scrollbar,
-#game #events::-webkit-scrollbar,
-#game #chat::-webkit-scrollbar,
-#game #memory::-webkit-scrollbar,
-#game #evidence:not(.hide)::-webkit-scrollbar,
-#game .actions #tabs::-webkit-scrollbar{
-  width:9px;
-  height:9px;
-}
-
-#game .scrollList::-webkit-scrollbar-track,
-#game #events::-webkit-scrollbar-track,
-#game #chat::-webkit-scrollbar-track,
-#game #memory::-webkit-scrollbar-track,
-#game #evidence:not(.hide)::-webkit-scrollbar-track,
-#game .actions #tabs::-webkit-scrollbar-track{
-  background:transparent;
-}
-
-#game .scrollList::-webkit-scrollbar-thumb,
-#game #events::-webkit-scrollbar-thumb,
-#game #chat::-webkit-scrollbar-thumb,
-#game #memory::-webkit-scrollbar-thumb,
-#game #evidence:not(.hide)::-webkit-scrollbar-thumb,
-#game .actions #tabs::-webkit-scrollbar-thumb{
-  background:#46515e;
-  border:2px solid transparent;
-  background-clip:padding-box;
-  border-radius:999px;
-}
-
-#game .scrollList::-webkit-scrollbar-thumb:hover,
-#game #events::-webkit-scrollbar-thumb:hover,
-#game #chat::-webkit-scrollbar-thumb:hover,
-#game #memory::-webkit-scrollbar-thumb:hover,
-#game #evidence:not(.hide)::-webkit-scrollbar-thumb:hover,
-#game .actions #tabs::-webkit-scrollbar-thumb:hover{
-  background:#657180;
-  border:2px solid transparent;
-  background-clip:padding-box;
-}
-
-#game .grid,
-#game .grid *{
-  max-width:100%;
-}
-
-@media (max-width:980px){
-  #game #evidence:not(.hide){max-height:380px}
-  #game .feed #events{max-height:360px}
-  #game .chat #chat{max-height:300px}
-}
-
-@media (max-width:700px){
-  #people.scrollList,
-  #locations.scrollList{
-    height:260px;
-    max-height:260px;
-  }
-  #game #evidence:not(.hide){max-height:340px}
-  #game .feed #events{max-height:320px}
-  #game .chat #chat{max-height:280px}
-  #game #memory{max-height:220px}
-}
-EOF
-          fi
-
-      - name: Commit CSS fix and remove temporary workflow
+          python3 -c "import base64,os;from pathlib import Path;p=Path('nocturne-vercel-3.5/frontend/styles.css');s=p.read_text(encoding='utf-8');m='/* NOCTURNE UI FIX 2026-09-05 */';a=base64.b64decode(os.environ['CSS_PATCH_B64']).decode();p.write_text(s if m in s else s+'\n'+a,encoding='utf-8')"
+      - name: Remove temporary trigger and workflow, commit CSS only
         run: |
-          set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add nocturne-vercel-3.5/frontend/styles.css
-          git rm .github/workflows/nocturne-ui-fix.yml
-          git rm -f nocturne-ui-fix-trigger.txt || true
+          git rm -f .github/workflows/nocturne-ui-fix.yml nocturne-ui-fix-trigger.txt || true
           git commit -m "Fix NOCTURNE panel overflow and scrollbars"
           git push
