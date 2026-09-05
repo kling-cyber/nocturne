@@ -1,0 +1,66 @@
+name: Wire local ComfyUI image generation
+
+on:
+  push:
+    paths:
+      - '.github/wire-comfyui.trigger'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch image generation bridge
+        shell: python
+        run: |
+          from pathlib import Path
+
+          game = Path('nocturne-vercel-3.5/backend/server/game.js')
+          text = game.read_text(encoding='utf-8')
+
+          if 'require("./comfy-client")' not in text:
+              marker = 'const { buildCameraNetwork, getCamera } = require("./camera-network");'
+              if marker not in text:
+                  raise SystemExit('camera-network import marker not found')
+              text = text.replace(marker, marker + '\nconst comfy = require("./comfy-client");', 1)
+
+          start_marker = '      console.log(\n        `[NOCTURNE] Calling Gemini Images API with ${IMG}...`\n      );'
+          end_marker = '      const description =\n'
+          start = text.find(start_marker)
+          end = text.find(end_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit('image API block markers not found')
+
+          replacement = '''      const negativePrompt =\n        "blurry, low quality, distorted, deformed, bad anatomy, extra limbs, text, watermark, cinematic poster, illustration, fantasy environment, generic location";\n\n      let image;\n      let imageSource = "Gemini";\n\n      if (comfy.configured) {\n\n        console.log(\n          `[NOCTURNE] Sending image workflow to local ComfyUI. checkpoint=${comfy.CHECKPOINT}`\n        );\n\n        const generated =\n          await comfy.request({\n            prompt,\n            negativePrompt,\n            caseSeed: this.seed,\n            cameraId,\n            type\n          });\n\n        image = generated.image;\n        imageSource = "ComfyUI";\n\n        console.log(\n          `[NOCTURNE] ComfyUI image completed. prompt_id=${generated.promptId}`\n        );\n\n      } else if (geminiImageAi) {\n\n        console.log(\n          `[NOCTURNE] Calling Gemini Images API with ${IMG}...`\n        );\n\n        const response =\n          await geminiImageAi.images.generate({\n            model: IMG,\n            prompt,\n            size: "1344x768",\n            response_format: "b64_json",\n            n: 1\n          });\n\n        const item =\n          response?.data?.[0];\n\n        const b64 =\n          item?.b64_json;\n\n        const url =\n          item?.url;\n\n        if (!b64 && !url) {\n          throw new Error(\n            "The image API returned no b64_json or url in the first result."\n          );\n        }\n\n        image =\n          b64\n            ? `data:image/png;base64,${b64}`\n            : url;\n\n        console.log(\n          "[NOCTURNE] Gemini image request completed."\n        );\n\n      } else {\n\n        throw new Error(\n          "No image engine is configured. Set COMFYUI_URL for local ComfyUI, or configure GEMINI_API_KEY for Gemini."\n        );\n      }\n\n\n'''
+
+          text = text[:start] + replacement + text[end:]
+
+          # Make the log identify the actual engine without changing gameplay.
+          text = text.replace(
+              '        `[NOCTURNE] Image request started. model=${IMG}, type=${type}, setting=${this.world[0]}, area=${actor.location}`',
+              '        `[NOCTURNE] Image request started. engine=${comfy.configured ? "ComfyUI" : "Gemini"}, type=${type}, setting=${this.world[0]}, area=${evidenceArea}`',
+              1
+          )
+
+          game.write_text(text, encoding='utf-8')
+
+      - name: Validate
+        run: |
+          node --check nocturne-vercel-3.5/backend/server/game.js
+          node --check nocturne-vercel-3.5/backend/server/comfy-client.js
+          node --check nocturne-vercel-3.5/frontend/app.js
+          git diff --check
+
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add nocturne-vercel-3.5/backend/server/game.js nocturne-vercel-3.5/backend/server/comfy-client.js
+          git diff --cached --check
+          git commit -m "Connect NOCTURNE visual evidence to local ComfyUI" || exit 0
+          git push
