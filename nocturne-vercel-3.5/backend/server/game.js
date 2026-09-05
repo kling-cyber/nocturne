@@ -495,6 +495,7 @@ class Sim {
     this.imageBusy = false;
 
     this.cameras = [];
+    this.cameraFrames = new Map();
 
     this.make(players, options);
   }
@@ -2965,6 +2966,11 @@ Nearby people: ${this.people
       true;
 
 
+    // A visual request advances the simulated clock by one minute so repeated
+    // captures from the same fixed camera represent the passage of time.
+    this.tick(1);
+
+
     const type =
       payload.type ===
       "photo"
@@ -3096,11 +3102,51 @@ Do not show:
 
 The image should look like imperfect fictional evidence.
 
-It may contain plausible visual observations, but it must not assert hidden case truth.`;
+It may contain plausible visual observations, but it must not assert hidden case truth.${photoEvidenceRules}${continuityInstruction}`;
 
+
+      const photoClueModes = [
+      "a mundane object subtly out of place, with no obvious reason for its position",
+      "a partially obscured reflection or background detail that creates a spatial inconsistency",
+      "a small environmental disturbance that could have several innocent explanations",
+      "a door, chair, drawer, curtain or cabinet left in a state that invites timeline questions",
+      "a faint trace-like environmental detail that is easy to dismiss without comparison to other evidence",
+      "a time-sensitive environmental detail such as lighting, equipment state or an unattended item",
+      "a subtle relationship between two ordinary objects that becomes meaningful only when cross-referenced with testimony",
+      "a partially visible detail at the edge of frame that is useful only when correlated with another observation"
+    ];
+
+    const photoClue =
+      photoClueModes[
+        Math.abs((this.t + this.seed.length) * 13) % photoClueModes.length
+      ];
+
+    const photoEvidenceRules =
+      type === "photo"
+        ? `\n\nDIFFICULT INDIRECT EVIDENCE RULES:
+- This photograph is an investigative evidence capture, not a clue card.
+- Include exactly one primary subtle anomaly: ${photoClue}.
+- Keep the anomaly small, naturally integrated and not centered for emphasis.
+- Never circle, highlight, label, explain or visually exaggerate the anomaly.
+- Surround it with believable mundane details so it can be mistaken for normal scene clutter.
+- Do not make the image itself reveal the Killer, motive, victim, weapon, sequence or answer.
+- Avoid readable text as the primary clue.
+- The investigator should need to compare this image with time, movement, testimony or another evidence source before its significance becomes clear.
+- Prefer ambiguity: the anomaly should support more than one plausible interpretation on first inspection.`
+        : "";
+
+      const cameraFrame =
+        type === "cctv"
+          ? this.cameraFrames.get(cameraId) || null
+          : null;
+
+      const continuityInstruction =
+        cameraFrame
+          ? `\n\nCONTINUITY FRAME: A previous frame from this exact camera exists and will be supplied as the source image. Preserve the architecture, walls, floor, doors, furniture, fixed objects, camera height, lens geometry and overall composition. The passage of time should primarily change transient people, positions and small temporary details. Do not redesign the location.`
+          : "";
 
       const negativePrompt =
-        "blurry, low quality, distorted, deformed, bad anatomy, extra limbs, text, watermark, cinematic poster, illustration, fantasy environment, generic location";
+        "blurry, low quality, distorted, deformed, bad anatomy, extra limbs, text, watermark, cinematic poster, illustration, fantasy environment, generic location, redesigned architecture, changed camera angle";
 
       let image;
       let imageSource = "ComfyUI";
@@ -3117,11 +3163,23 @@ It may contain plausible visual observations, but it must not assert hidden case
             negativePrompt,
             caseSeed: this.seed,
             cameraId,
-            type
+            type,
+            capture: this.t,
+            initImage: cameraFrame
           });
 
         image = generated.image;
         imageSource = "ComfyUI";
+
+        if (type === "cctv") {
+          this.cameraFrames.set(cameraId, {
+            image: generated.image,
+            buffer: generated.buffer,
+            filename: generated.filename,
+            subfolder: generated.subfolder || "",
+            type: generated.type || "output"
+          });
+        }
 
         console.log(
           `[NOCTURNE] ComfyUI image completed. prompt_id=${generated.promptId}`
