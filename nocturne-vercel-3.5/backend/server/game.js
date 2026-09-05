@@ -3005,7 +3005,7 @@ Nearby people: ${this.people
       );
 
       console.error(
-        "[NOCTURNE] Image model:",
+        "[NOCTURNE] ComfyUI checkpoint:",
         comfy.CHECKPOINT
       );
 
@@ -3127,52 +3127,7 @@ It may contain plausible visual observations, but it must not assert hidden case
           `[NOCTURNE] ComfyUI image completed. prompt_id=${generated.promptId}`
         );
 
-      } else if (false) {
-
-        console.log(
-          `[NOCTURNE] Calling Gemini Images API with ${IMG}...`
-        );
-
-        const response =
-          await geminiImageAi.images.generate({
-            model: "disabled",
-            prompt,
-            size: "1344x768",
-            response_format: "b64_json",
-            n: 1
-          });
-
-        const item =
-          response?.data?.[0];
-
-        const b64 =
-          item?.b64_json;
-
-        const url =
-          item?.url;
-
-        if (!b64 && !url) {
-          throw new Error(
-            "The image API returned no b64_json or url in the first result."
-          );
-        }
-
-        image =
-          b64
-            ? `data:image/png;base64,${b64}`
-            : url;
-
-        console.log(
-          "[NOCTURNE] Gemini image request completed."
-        );
-
-      } else {
-
-        throw new Error(
-          "No image engine is configured. Set COMFYUI_URL for local ComfyUI."
-        );
       }
-
 
       const description =
         "Visual evidence generated from the live case state. It is an observation, not automatic truth.";
