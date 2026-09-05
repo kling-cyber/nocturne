@@ -1,0 +1,1 @@
+Temporary trigger for CSS-only UI maintenance. This file is removed automatically by the UI fix workflow.
