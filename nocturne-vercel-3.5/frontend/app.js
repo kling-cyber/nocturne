@@ -562,7 +562,26 @@ function killerDecision(){
    MAIN GAME RENDER
 ========================= */
 
-function renderCameraSelector(){const box=$("cameraSelector");if(!box)return;const cams=Array.isArray(S.cameras)?S.cameras:[];box.innerHTML=cams.map((c,i)=>`<button class="cameraBtn ${i===0?"selected":""}" data-camera-id="${esc(c.id)}" onclick="selectCamera(this)">${esc(c.id)} · ${esc(c.area)}</button>`).join("");}
+function renderCameraSelector(){
+  const box=$("cameraSelector");
+  if(!box)return;
+
+  const cams=Array.isArray(S?.cameras)?S.cameras:[];
+  const wanted=window.NOCTURNE_SELECTED_CAMERA||cams[0]?.id||"";
+
+  box.innerHTML=cams.map(c=>`<button class="cameraBtn ${c.id===wanted?"selected":""}" data-camera-id="${esc(c.id)}" onclick="selectCamera(this)">${esc(c.id)} · ${esc(c.area)}</button>`).join("");
+
+  if(cams.length&&!box.querySelector(".selected")){
+    box.querySelector("[data-camera-id]")?.classList.add("selected");
+  }
+}
+
+function selectCamera(btn){
+  document.querySelectorAll("[data-camera-id]").forEach(b=>b.classList.remove("selected"));
+  btn.classList.add("selected");
+  window.NOCTURNE_SELECTED_CAMERA=btn.dataset.cameraId||"";
+}
+
 function selectCamera(btn){document.querySelectorAll("[data-camera-id]").forEach(b=>b.classList.remove("selected"));btn.classList.add("selected");}
 
 function render(){
@@ -930,6 +949,8 @@ function render(){
     $('visual').innerHTML=`
       <div class="visual">
 
+        <div class="cameraSelector" id="cameraSelector"></div>
+
         <div
           class="visualbox"
           id="visualbox"
@@ -1124,7 +1145,9 @@ function render(){
   }
 
   tab(activeTab,false);
-}
+
+
+  renderCameraSelector();}
 
 
 /* =========================
