@@ -3,6 +3,7 @@ require("dotenv").config();
 const crypto = require("crypto");
 
 const { buildCameraNetwork, getCamera } = require("./camera-network");
+const comfy = require("./comfy-client");
 
 let OpenAI = null;
 
@@ -3043,7 +3044,7 @@ Nearby people: ${this.people
     try {
 
       console.log(
-        `[NOCTURNE] Image request started. model=${IMG}, type=${type}, setting=${this.world[0]}, area=${actor.location}`
+        `[NOCTURNE] Image request started. engine=${comfy.configured ? "ComfyUI" : "Gemini"}, type=${type}, setting=${this.world[0]}, area=${evidenceArea}`
       );
 
 
@@ -3114,67 +3115,79 @@ The image should look like imperfect fictional evidence.
 It may contain plausible visual observations, but it must not assert hidden case truth.`;
 
 
-      console.log(
-        `[NOCTURNE] Calling Gemini Images API with ${IMG}...`
-      );
+      const negativePrompt =
+        "blurry, low quality, distorted, deformed, bad anatomy, extra limbs, text, watermark, cinematic poster, illustration, fantasy environment, generic location";
 
+      let image;
+      let imageSource = "Gemini";
 
-      const response =
-        await geminiImageAi.images.generate({
+      if (comfy.configured) {
 
-          model:
-            IMG,
+        console.log(
+          `[NOCTURNE] Sending image workflow to local ComfyUI. checkpoint=${comfy.CHECKPOINT}`
+        );
 
-          prompt,
+        const generated =
+          await comfy.request({
+            prompt,
+            negativePrompt,
+            caseSeed: this.seed,
+            cameraId,
+            type
+          });
 
-          size:
-            "1344x768",
+        image = generated.image;
+        imageSource = "ComfyUI";
 
-          response_format:
-            "b64_json",
+        console.log(
+          `[NOCTURNE] ComfyUI image completed. prompt_id=${generated.promptId}`
+        );
 
-          n:
-            1
-        });
+      } else if (geminiImageAi) {
 
+        console.log(
+          `[NOCTURNE] Calling Gemini Images API with ${IMG}...`
+        );
 
-      console.log(
-        "[NOCTURNE] Gemini image request completed."
-      );
+        const response =
+          await geminiImageAi.images.generate({
+            model: IMG,
+            prompt,
+            size: "1344x768",
+            response_format: "b64_json",
+            n: 1
+          });
 
+        const item =
+          response?.data?.[0];
 
-      const item =
-        response?.data?.[0];
+        const b64 =
+          item?.b64_json;
 
+        const url =
+          item?.url;
 
-      const b64 =
-        item?.b64_json;
+        if (!b64 && !url) {
+          throw new Error(
+            "The image API returned no b64_json or url in the first result."
+          );
+        }
 
+        image =
+          b64
+            ? `data:image/png;base64,${b64}`
+            : url;
 
-      const url =
-        item?.url;
+        console.log(
+          "[NOCTURNE] Gemini image request completed."
+        );
 
-
-      /*
-       * Gemini image responses can provide
-       * base64 image data or a URL.
-       */
-
-      if (
-        !b64 &&
-        !url
-      ) {
+      } else {
 
         throw new Error(
-          "The image API returned no b64_json or url in the first result."
+          "No image engine is configured. Set COMFYUI_URL for local ComfyUI, or configure GEMINI_API_KEY for Gemini."
         );
       }
-
-
-      const image =
-        b64
-          ? `data:image/png;base64,${b64}`
-          : url;
 
 
       const description =
