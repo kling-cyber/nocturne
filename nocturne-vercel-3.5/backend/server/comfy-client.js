@@ -15,7 +15,11 @@ const CFG = Number(process.env.COMFYUI_CFG || 8);
 const SAMPLER = String(process.env.COMFYUI_SAMPLER || "euler").trim();
 const SCHEDULER = String(process.env.COMFYUI_SCHEDULER || "simple").trim();
 const CCTV_DENOISE = Number(process.env.COMFYUI_CCTV_DENOISE || 0.24);
-const GENERATION_TIMEOUT_MS = Math.max(1000, Number(process.env.COMFYUI_GENERATION_TIMEOUT_MS || 10000));
+
+// Image generation is intentionally capped at 10 seconds for the local GPU path.
+// Keep this fixed so an older Render environment value such as 30000 cannot
+// silently restore the previous 30-second generation limit.
+const GENERATION_TIMEOUT_MS = 10000;
 const POLL_MS = Math.max(200, Number(process.env.COMFYUI_POLL_MS || 350));
 
 const clean = (value, max = 7000) => String(value ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").slice(0, max);
