@@ -5,7 +5,7 @@ const comfy=require('./comfy-client');
 const GENERATION_TIMEOUT_MS=10000;
 const WIDTH=Number(process.env.COMFYUI_WIDTH||768);
 const HEIGHT=Number(process.env.COMFYUI_HEIGHT||512);
-const STEPS=Math.max(4,Math.min(12,Number(process.env.COMFYUI_STEPS||8)));
+const STEPS=Number(process.env.COMFYUI_STEPS||20);
 const cases=new Map();
 
 const hash=v=>crypto.createHash('sha256').update(String(v)).digest('hex').slice(0,16);
