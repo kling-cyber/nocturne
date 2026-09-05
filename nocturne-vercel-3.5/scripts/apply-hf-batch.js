@@ -8,27 +8,58 @@ let game=fs.readFileSync(path.join(b,'game.js'),'utf8');
 if(!game.includes('require("./visual-batch")')) game=game.replace('const comfy = require("./comfy-client");','const visualBatch = require("./visual-batch");');
 if(!game.includes('visualBatch.register(this);')) game=game.replace('    this.cameraFrames = new Map();\n\n    this.make(players, options);','    this.cameraFrames = new Map();\n    this.visualCooldowns = new Map();\n\n    this.make(players, options);\n    visualBatch.register(this);');
 
-const visualMethod=`  async visual(pid, payload = {}) {
-    const actor=this.get(pid);
-    if(!actor || !actor.alive || this.caseClosed) return;
+const visualMethod=`  async visual(
+    pid,
+    payload = {}
+  ) {
+
+    const actor =
+      this.get(pid);
+
+    if (!actor || !actor.alive || this.caseClosed) {
+      return;
+    }
+
     const result=visualBatch.request(this,pid,payload);
-    if(result?.error){ this.room.io.to(pid).emit('errorMessage',result.error); return; }
+    if(result?.error){
+      this.room.io.to(pid).emit('errorMessage',result.error);
+      return;
+    }
+
     const asset=result.asset;
     const title=asset.cameraId+' // '+asset.kind.toUpperCase()+' // '+asset.clock;
     const description=asset.kind==='cctv'
       ?'Cached CCTV evidence from '+asset.area+'. The timestamp is the simulated case capture time.'
       :'Cached investigative scene photograph from '+asset.area+'. It is an observation, not automatic truth.';
-    this.add({type:'visual',title,description,reliability:asset.kind==='cctv'?75:65,image:asset.path,source:asset.cameraId,visualAssetId:asset.id});
+
+    this.add({
+      type:'visual',
+      title,
+      description,
+      reliability:asset.kind==='cctv'?75:65,
+      image:asset.path,
+      source:asset.cameraId,
+      visualAssetId:asset.id
+    });
+
     this.event('VISUAL',actor.name+' retrieved '+asset.kind.toUpperCase()+' evidence from '+asset.cameraId+'.');
-    this.room.io.to(pid).emit('visualReady',{title,description,reliability:asset.kind==='cctv'?75:65,image:asset.path});
+
+    this.room.io.to(pid).emit('visualReady',{
+      title,
+      description,
+      reliability:asset.kind==='cctv'?75:65,
+      image:asset.path
+    });
+
     this.emit();
   }
 
 
 `;
-const visualPattern=/  async visual\(pid, payload = \{\}\) \{[\s\S]*?\n  \}\n\n\n  \/\* =======================================================\n     PUBLIC STATE/;
+const visualPattern=/  async visual\(\s*pid,\s*payload = \{\}\s*\) \{[\s\S]*?\n  \}\n\n\n  \/\* =======================================================\n     PUBLIC STATE/;
 if(visualPattern.test(game)) game=game.replace(visualPattern,visualMethod+'  /* =======================================================\n     PUBLIC STATE');
 else if(!game.includes('visualBatch.request(this,pid,payload)')) throw new Error('Could not locate game.js visual method');
+
 if(!game.includes('visualBatch.touch(this);')){
   const marker='  emit() {\n\n    this.room.io\n      .to(this.room.code)';
   if(!game.includes(marker)) throw new Error('Could not locate game.js emit method');
@@ -54,7 +85,6 @@ const newShow='function visualSrc(src){\n  const value=String(src||\'\');\n  if(
 if(app.includes(oldShow) && !app.includes('function visualSrc(src)')) app=app.replace(oldShow,newShow,1);
 app=app.replace('src="${esc(d.image||\'\')}"','src="${esc(visualSrc(d.image||\'\'))}"',1);
 app=app.replace('src="${esc(e.image)}"','src="${esc(visualSrc(e.image))}"',1);
-app=app.replace('function selectCamera(btn){document.querySelectorAll("[data-camera-id]").forEach(b=>b.classList.remove("selected"));btn.classList.add("selected");}\n','');
 fs.writeFileSync(path.join(f,'app.js'),app);
 
 const pkgPath=path.join(root,'backend/package.json');
