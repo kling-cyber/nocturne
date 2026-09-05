@@ -22,6 +22,7 @@ jobs:
           python3 -c "import base64,os;from pathlib import Path;p=Path('nocturne-vercel-3.5/frontend/styles.css');s=p.read_text(encoding='utf-8');m='/* NOCTURNE UI FIX 2026-09-05 */';a=base64.b64decode(os.environ['CSS_PATCH_B64']).decode();p.write_text(s if m in s else s+'\n'+a,encoding='utf-8')"
       - name: Remove temporary trigger and workflow, commit CSS only
         run: |
+          set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add nocturne-vercel-3.5/frontend/styles.css
