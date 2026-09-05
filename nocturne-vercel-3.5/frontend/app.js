@@ -562,6 +562,9 @@ function killerDecision(){
    MAIN GAME RENDER
 ========================= */
 
+function renderCameraSelector(){const box=$("cameraSelector");if(!box)return;const cams=Array.isArray(S.cameras)?S.cameras:[];box.innerHTML=cams.map((c,i)=>`<button class="cameraBtn ${i===0?"selected":""}" data-camera-id="${esc(c.id)}" onclick="selectCamera(this)">${esc(c.id)} · ${esc(c.area)}</button>`).join("");}
+function selectCamera(btn){document.querySelectorAll("[data-camera-id]").forEach(b=>b.classList.remove("selected"));btn.classList.add("selected");}
+
 function render(){
   if(!S)return;
 
@@ -1428,44 +1431,14 @@ function accuse(id,name){
 ========================= */
 
 function visual(type){
-
-  setBusy(
-    true,
-    type==='cctv'
-      ?'Retrieving CCTV evidence…'
-      :'Developing scene photograph…'
-  );
-
-  sock.emit(
-    'requestVisual',
-    {
-      type,
-      cameraId:
-        type==='cctv'
-          ?'CAM-01'
-          :'EVIDENCE-PHOTO'
-    }
-  );
-
-  /*
-    Safety timeout.
-
-    If visual generation somehow fails to respond,
-    don't leave the player trapped forever.
-  */
-
-  setTimeout(()=>{
-
-    if(busy){
-
-      setBusy(false);
-
-      toast(
-        'Visual request timed out. The case can continue.'
-      );
-    }
-
-  },30000);
+  setBusy(true, type === "cctv" ? "Retrieving CCTV frame..." : "Generating scene photograph...");
+  if(type === "cctv"){
+    const buttons=document.querySelectorAll("[data-camera-id]");
+    if(!buttons.length){setBusy(false);alert("No case cameras are available yet.");return;}
+    const selected=document.querySelector("[data-camera-id].selected");
+    sock.emit("requestVisual",{type:"cctv",cameraId:selected?.dataset.cameraId||buttons[0].dataset.cameraId}); return;
+  }
+  sock.emit("requestVisual",{type:"photo",cameraId:"EVIDENCE-PHOTO"});
 }
 
 

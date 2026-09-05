@@ -1738,3 +1738,6 @@ body{
 #game #memory{max-height:260px;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable}
 #game .scrollList,#game #events,#game #chat,#game #memory,#game #evidence:not(.hide),#game .actions #tabs{scrollbar-color:#46515e transparent}
 @media(max-width:700px){#people.scrollList,#locations.scrollList{height:260px;max-height:260px}#game #evidence:not(.hide){max-height:340px}#game .feed #events{max-height:320px}#game .chat #chat{max-height:280px}#game #memory{max-height:220px}}
+
+
+.cameraSelector{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 10px}.cameraBtn{border:1px solid var(--line2);border-radius:7px;padding:8px 10px;background:#151a21;color:var(--soft);font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;letter-spacing:.03em;line-height:1.25;cursor:pointer}.cameraBtn:hover{border-color:var(--accent);color:var(--accent);background:#11161c}.cameraBtn.selected{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 1px rgba(217,255,98,.12) inset}@media(max-width:700px){.cameraSelector{gap:6px}.cameraBtn{font-size:9px;padding:7px 8px}}

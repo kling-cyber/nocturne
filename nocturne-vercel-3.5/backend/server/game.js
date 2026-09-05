@@ -2,6 +2,8 @@ require("dotenv").config();
 
 const crypto = require("crypto");
 
+const { buildCameraNetwork, getCamera } = require("./camera-network");
+
 let OpenAI = null;
 
 try {
@@ -507,6 +509,8 @@ class Sim {
 
     this.imageBusy = false;
 
+    this.cameras = [];
+
     this.make(players, options);
   }
 
@@ -827,6 +831,8 @@ class Sim {
           )
         : this.get(killerId);
 
+
+    this.cameras = buildCameraNetwork(this.world[1]);
 
     this.truth = {
 
@@ -2981,12 +2987,11 @@ Nearby people: ${this.people
         : "cctv";
 
 
-    const cameraId =
-      clean(
-        payload.cameraId ||
-          "CAM-01",
-        30
-      );
+    const requestedCameraId = clean(payload.cameraId || "", 30);
+    const camera = getCamera(this.cameras, requestedCameraId);
+    if (type === "cctv" && !camera) { this.room.io.to(pid).emit("errorMessage", "Invalid CCTV camera for this case. Select one of the available case cameras."); this.imageBusy=false; return; }
+    const cameraId = camera?.id || "EVIDENCE-PHOTO";
+    const evidenceArea = camera?.area || clean(payload.area || actor.location, 120);
 
 
     const title =
@@ -3060,22 +3065,39 @@ This is ${
 Setting:
 ${this.world[0]}
 
-Area:
-${actor.location}
+Available case locations:
+${this.world[1].join(", ")}
+
+Evidence area:
+${evidenceArea}
+
+Camera ID:
+${camera?.id || "not applicable"}
+
+Camera position:
+${camera?.position || "handheld investigator camera"}
+
+Camera view:
+${camera?.view || "documentary scene view"}
 
 Simulated case time:
 ${this.clock()}
 
 Visual direction:
-- believable architecture
-- ordinary environmental objects
-- imperfect lighting
-- subtle sensor noise
-- slight lens or compression artifacts
+- the venue and evidence area must match the generated case exactly
+- use only architecture, furniture and environmental objects plausible for this venue and area
+- do not substitute a generic location
+- imperfect lighting appropriate to the area
+- subtle sensor noise and realistic optical imperfections
 - restrained documentary framing
-- realistic evidence photography
 - ambiguous but useful visual details
 - not a cinematic poster
+
+CCTV continuity rules:
+- if this is CCTV, keep the camera physically fixed
+- preserve the same camera position, direction, lens character and environmental layout for repeated frames from this camera
+- allow people, doors, small objects and transient events to change naturally between frames
+- never move the camera or change the room into another location
 
 Do not show:
 - gore
@@ -3325,6 +3347,9 @@ It may contain plausible visual observations, but it must not assert hidden case
 
       clock:
         this.clock(),
+
+      cameras:
+        this.cameras.map(c => ({ id:c.id, area:c.area, type:c.type, position:c.position, view:c.view })),
 
       people:
         this.people.map(
