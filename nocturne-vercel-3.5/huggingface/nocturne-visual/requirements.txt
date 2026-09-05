@@ -1,0 +1,5 @@
+diffusers>=0.35.1
+transformers>=4.57.0
+accelerate>=1.10.0
+safetensors>=0.6.0
+pillow>=11.0.0
