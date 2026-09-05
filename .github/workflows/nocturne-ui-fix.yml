@@ -2,7 +2,8 @@ name: NOCTURNE UI CSS Fix
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -17,20 +18,16 @@ jobs:
           fetch-depth: 0
 
       - name: Apply CSS-only layout fixes
-        shell: python
         run: |
-          from pathlib import Path
+          set -e
+          FILE="nocturne-vercel-3.5/frontend/styles.css"
+          MARKER="/* NOCTURNE UI FIX 2026-09-05 */"
 
-          path = Path("nocturne-vercel-3.5/frontend/styles.css")
-          css = path.read_text(encoding="utf-8")
-          marker = "/* NOCTURNE UI FIX 2026-09-05 */"
-
-          if marker not in css:
-              css += r'''
+          if ! grep -Fq "$MARKER" "$FILE"; then
+            cat >> "$FILE" <<'EOF'
 
 /* NOCTURNE UI FIX 2026-09-05 */
 
-/* Keep every game column inside its own grid track. */
 #game .grid > aside,
 #game .grid > article,
 #game .grid > aside > .panel,
@@ -40,7 +37,6 @@ jobs:
   max-width:100%;
 }
 
-/* PEOPLE + LOCATIONS: headers stay fixed, lists own the scrollbar. */
 #leftSide .panel:has(#people),
 #leftSide .panel:has(#locations){
   overflow:hidden;
@@ -70,7 +66,6 @@ jobs:
   scrollbar-gutter:stable;
 }
 
-/* Prevent list rows from creating horizontal overflow. */
 #people .person,
 #locations .loc{
   min-width:0;
@@ -85,7 +80,6 @@ jobs:
   overflow-wrap:anywhere;
 }
 
-/* Action panel: tabs scroll horizontally only. No stray vertical scrollbar. */
 #game .actions{
   min-width:0;
   overflow:hidden;
@@ -108,7 +102,6 @@ jobs:
   white-space:nowrap;
 }
 
-/* Every action tab is contained by the action panel. */
 #game .actions > #act,
 #game .actions > #invest,
 #game .actions > #evidence,
@@ -120,7 +113,6 @@ jobs:
   overflow-x:hidden;
 }
 
-/* Evidence gets its own bounded scroll area, so new evidence never expands the panel. */
 #game #evidence:not(.hide){
   max-height:420px;
   overflow-x:hidden;
@@ -134,7 +126,6 @@ jobs:
   max-width:100%;
 }
 
-/* Long evidence text, labels, URLs and generated metadata cannot push the panel wider. */
 #game #evidence p,
 #game #evidence div,
 #game #evidence span,
@@ -145,7 +136,6 @@ jobs:
   word-break:break-word;
 }
 
-/* Case feed is bounded as well. New events scroll inside the feed instead of moving the layout. */
 #game .feed{
   min-width:0;
   overflow:hidden;
@@ -160,7 +150,6 @@ jobs:
   scrollbar-gutter:stable;
 }
 
-/* Public communications stay inside their panel as chat grows. */
 #game .chat{
   min-width:0;
   overflow:hidden;
@@ -175,7 +164,6 @@ jobs:
   scrollbar-gutter:stable;
 }
 
-/* Memory is also bounded so a large NPC memory cannot stretch the left column. */
 #game .role{
   min-width:0;
   overflow:hidden;
@@ -190,7 +178,6 @@ jobs:
   scrollbar-gutter:stable;
 }
 
-/* Consistent slim scrollbars for every intentionally scrollable game area. */
 #game .scrollList,
 #game #events,
 #game #chat,
@@ -243,24 +230,15 @@ jobs:
   background-clip:padding-box;
 }
 
-/* Prevent nested content from forcing the overall page wider. */
 #game .grid,
 #game .grid *{
   max-width:100%;
 }
 
 @media (max-width:980px){
-  #game #evidence:not(.hide){
-    max-height:380px;
-  }
-
-  #game .feed #events{
-    max-height:360px;
-  }
-
-  #game .chat #chat{
-    max-height:300px;
-  }
+  #game #evidence:not(.hide){max-height:380px}
+  #game .feed #events{max-height:360px}
+  #game .chat #chat{max-height:300px}
 }
 
 @media (max-width:700px){
@@ -269,32 +247,21 @@ jobs:
     height:260px;
     max-height:260px;
   }
-
-  #game #evidence:not(.hide){
-    max-height:340px;
-  }
-
-  #game .feed #events{
-    max-height:320px;
-  }
-
-  #game .chat #chat{
-    max-height:280px;
-  }
-
-  #game #memory{
-    max-height:220px;
-  }
+  #game #evidence:not(.hide){max-height:340px}
+  #game .feed #events{max-height:320px}
+  #game .chat #chat{max-height:280px}
+  #game #memory{max-height:220px}
 }
-'''
-              path.write_text(css, encoding="utf-8")
+EOF
+          fi
 
       - name: Commit CSS fix and remove temporary workflow
-        shell: bash
         run: |
+          set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add nocturne-vercel-3.5/frontend/styles.css .github/workflows/nocturne-ui-fix.yml
+          git add nocturne-vercel-3.5/frontend/styles.css
           git rm .github/workflows/nocturne-ui-fix.yml
+          git rm -f nocturne-ui-fix-trigger.txt || true
           git commit -m "Fix NOCTURNE panel overflow and scrollbars"
           git push
