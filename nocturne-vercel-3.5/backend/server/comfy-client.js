@@ -19,10 +19,7 @@ const CCTV_DENOISE = Number(process.env.COMFYUI_CCTV_DENOISE || 0.24);
 const clean = (value, max = 7000) => String(value ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").slice(0, max);
 
 function seedFor(caseSeed, cameraId, type, capture) {
-  const digest = crypto
-    .createHash("sha256")
-    .update(`${caseSeed}|${cameraId}|${type}|${capture}`)
-    .digest();
+  const digest = crypto.createHash("sha256").update(`${caseSeed}|${cameraId}|${type}|${capture}`).digest();
   return digest.readUInt32BE(0) * 2147483648 + digest.readUInt32BE(4);
 }
 
@@ -38,10 +35,10 @@ function baseWorkflow({ prompt, negativePrompt, seed }) {
   };
 }
 
-function continuityWorkflow({ prompt, negativePrompt, seed, initImage }) {
+function continuityWorkflow({ prompt, negativePrompt, seed, inputName }) {
   return {
     "1": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: CHECKPOINT } },
-    "2": { class_type: "LoadImage", inputs: { image: initImage.filename, upload: "image", subfolder: initImage.subfolder || "", type: initImage.type || "output" } },
+    "2": { class_type: "LoadImage", inputs: { image: inputName } },
     "3": { class_type: "VAEEncode", inputs: { pixels: ["2", 0], vae: ["1", 2] } },
     "4": { class_type: "CLIPTextEncode", inputs: { text: clean(prompt), clip: ["1", 1] } },
     "5": { class_type: "CLIPTextEncode", inputs: { text: clean(negativePrompt), clip: ["1", 1] } },
@@ -51,23 +48,39 @@ function continuityWorkflow({ prompt, negativePrompt, seed, initImage }) {
   };
 }
 
+async function uploadReference(buffer, filename) {
+  const form = new FormData();
+  form.append("image", new Blob([buffer], { type: "image/png" }), filename);
+  form.append("type", "input");
+  form.append("overwrite", "true");
+  const response = await fetch(`${COMFY_URL}/upload/image`, { method: "POST", body: form });
+  const text = await response.text();
+  let data = null;
+  try { data = JSON.parse(text); } catch (_) {}
+  if (!response.ok) throw new Error(`ComfyUI /upload/image HTTP ${response.status}: ${clean(text, 1200)}`);
+  if (!data?.name) throw new Error("ComfyUI did not return an uploaded reference image name.");
+  return data.name;
+}
+
 async function request({ prompt, negativePrompt, caseSeed, cameraId, type, capture = 0, initImage = null }) {
   if (!COMFY_URL) throw new Error("COMFYUI_URL is not configured.");
   const clientId = crypto.randomUUID();
   const seed = seedFor(caseSeed, cameraId, type, capture);
-  const continuity = type === "cctv" && initImage?.filename;
-  const payloadPrompt = continuity
-    ? continuityWorkflow({ prompt, negativePrompt, seed, initImage })
-    : baseWorkflow({ prompt, negativePrompt, seed });
+  let payloadPrompt;
+  let continuity = false;
 
-  console.log(`[NOCTURNE] ComfyUI request: ${type} ${cameraId} ${WIDTH}x${HEIGHT} steps=${STEPS} cfg=${CFG} sampler=${SAMPLER} scheduler=${SCHEDULER} continuity=${!!continuity}`);
+  if (type === "cctv" && initImage?.buffer) {
+    const inputName = `NOCTURNE_${clean(cameraId, 20).replace(/[^A-Za-z0-9_-]/g, "_")}_reference.png`;
+    const uploadedName = await uploadReference(initImage.buffer, inputName);
+    payloadPrompt = continuityWorkflow({ prompt, negativePrompt, seed, inputName: uploadedName });
+    continuity = true;
+  } else {
+    payloadPrompt = baseWorkflow({ prompt, negativePrompt, seed });
+  }
 
-  const response = await fetch(`${COMFY_URL}/prompt`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ client_id: clientId, prompt: payloadPrompt })
-  });
+  console.log(`[NOCTURNE] ComfyUI request: ${type} ${cameraId} ${WIDTH}x${HEIGHT} steps=${STEPS} cfg=${CFG} sampler=${SAMPLER} scheduler=${SCHEDULER} continuity=${continuity}`);
 
+  const response = await fetch(`${COMFY_URL}/prompt`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_id: clientId, prompt: payloadPrompt }) });
   const text = await response.text();
   let data = null;
   try { data = JSON.parse(text); } catch (_) {}
@@ -101,7 +114,7 @@ async function waitForImage(promptId) {
       if (!imageResponse.ok) throw new Error(`ComfyUI /view HTTP ${imageResponse.status}.`);
       const buffer = Buffer.from(await imageResponse.arrayBuffer());
       console.log(`[NOCTURNE] ComfyUI image retrieved: ${image.filename}`);
-      return { image: `data:image/png;base64,${buffer.toString("base64")}`, filename: image.filename, subfolder: image.subfolder || "", type: image.type || "output", promptId };
+      return { image: `data:image/png;base64,${buffer.toString("base64")}`, buffer, filename: image.filename, subfolder: image.subfolder || "", type: image.type || "output", promptId };
     }
   }
   throw new Error("ComfyUI image generation timed out after 180 seconds.");
