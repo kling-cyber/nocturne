@@ -2996,7 +2996,7 @@ Nearby people: ${this.people
 
       console.error(
         "[NOCTURNE] GEMINI_API_KEY present:",
-        !!geminiApiKey
+        false
       );
 
       console.error(
@@ -3006,7 +3006,7 @@ Nearby people: ${this.people
 
       console.error(
         "[NOCTURNE] Image model:",
-        IMG
+        comfy.CHECKPOINT
       );
 
 
@@ -3014,7 +3014,7 @@ Nearby people: ${this.people
         .to(pid)
         .emit(
           "errorMessage",
-          "Image generation is not configured on the NOCTURNE server. Check GEMINI_API_KEY and GEMINI_IMAGE_MODEL on Render and redeploy."
+          "Image generation is not configured on the NOCTURNE server. Check COMFYUI_URL on Render and make sure the Cloudflare ComfyUI tunnel is online."
         );
 
 
@@ -3028,7 +3028,7 @@ Nearby people: ${this.people
     try {
 
       console.log(
-        `[NOCTURNE] Image request started. engine=${comfy.configured ? "ComfyUI" : "Gemini"}, type=${type}, setting=${this.world[0]}, area=${evidenceArea}`
+        `[NOCTURNE] Image request started. engine=ComfyUI, type=${type}, setting=${this.world[0]}, area=${evidenceArea}`
       );
 
 
@@ -3169,7 +3169,7 @@ It may contain plausible visual observations, but it must not assert hidden case
       } else {
 
         throw new Error(
-          "No image engine is configured. Set COMFYUI_URL for local ComfyUI, or configure GEMINI_API_KEY for Gemini."
+          "No image engine is configured. Set COMFYUI_URL for local ComfyUI."
         );
       }
 
@@ -3268,7 +3268,7 @@ It may contain plausible visual observations, but it must not assert hidden case
 
       console.error(
         "[NOCTURNE] Gemini image model:",
-        IMG
+        comfy.CHECKPOINT
       );
 
       console.error(
