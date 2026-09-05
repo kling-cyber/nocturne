@@ -1,0 +1,125 @@
+name: Wire dynamic camera network
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch camera network safely
+        shell: python
+        run: |
+          from pathlib import Path
+
+          game = Path('nocturne-vercel-3.5/backend/server/game.js')
+          text = game.read_text(encoding='utf-8')
+
+          marker = 'const crypto = require("crypto");'
+          insert = '''const crypto = require("crypto");\n\nconst {\n  buildCameraNetwork,\n  getCamera\n} = require("./camera-network");'''
+          if 'require("./camera-network")' not in text:
+              if marker not in text:
+                  raise SystemExit('game.js import marker not found')
+              text = text.replace(marker, insert, 1)
+
+          marker = '    this.imageBusy = false;'
+          insert = '''    this.imageBusy = false;\n\n    this.cameras = [];'''
+          if 'this.cameras = [];' not in text:
+              if marker not in text:
+                  raise SystemExit('game.js imageBusy marker not found')
+              text = text.replace(marker, insert, 1)
+
+          marker = '    this.truth = {\n\n      killerId:'
+          if marker not in text:
+              raise SystemExit('game.js truth marker not found')
+          replacement = '    this.cameras = buildCameraNetwork(this.world[1]);\n\n\n    this.truth = {\n\n      killerId:'
+          if 'this.cameras = buildCameraNetwork(this.world[1]);' not in text:
+              text = text.replace(marker, replacement, 1)
+
+          marker = '      clock:\n        this.clock(),'
+          replacement = '''      clock:\n        this.clock(),\n\n      cameras:\n        this.cameras.map(c => ({\n          id: c.id,\n          area: c.area,\n          type: c.type,\n          position: c.position,\n          view: c.view\n        })),'''
+          if '      cameras:\n        this.cameras.map' not in text:
+              if marker not in text:
+                  raise SystemExit('game.js state clock marker not found')
+              text = text.replace(marker, replacement, 1)
+
+          marker = '    const cameraId =\n      clean(\n        payload.cameraId ||\n          "CAM-01",\n        30\n      );'
+          replacement = '''    const requestedCameraId =\n      clean(\n        payload.cameraId ||\n          "",\n        30\n      );\n\n    const camera =\n      getCamera(\n        this.cameras,\n        requestedCameraId\n      );\n\n    if (type === "cctv" && !camera) {\n      this.room.io\n        .to(pid)\n        .emit(\n          "errorMessage",\n          "Invalid CCTV camera for this case. Select one of the available case cameras."\n        );\n      this.imageBusy = false;\n      return;\n    }\n\n    const cameraId =\n      camera?.id ||\n      "EVIDENCE-PHOTO";\n\n    const evidenceArea =\n      camera?.area ||\n      clean(payload.area || actor.location, 120);'''
+          if 'const requestedCameraId' not in text:
+              if marker not in text:
+                  raise SystemExit('game.js camera marker not found')
+              text = text.replace(marker, replacement, 1)
+
+          old = '''Setting:\n${this.world[0]}\n\nArea:\n${actor.location}\n\nSimulated case time:\n${this.clock()}'''
+          new = '''Setting:\n${this.world[0]}\n\nAvailable case locations:\n${this.world[1].join(", ")}\n\nEvidence area:\n${evidenceArea}\n\nCamera ID:\n${camera?.id || "not applicable"}\n\nCamera position:\n${camera?.position || "handheld investigator camera"}\n\nCamera view:\n${camera?.view || "documentary scene view"}\n\nSimulated case time:\n${this.clock()}'''
+          if old not in text:
+              raise SystemExit('game.js visual prompt context not found')
+          text = text.replace(old, new, 1)
+
+          old = '''Visual direction:\n- believable architecture\n- ordinary environmental objects\n- imperfect lighting\n- subtle sensor noise\n- slight lens or compression artifacts\n- restrained documentary framing\n- realistic evidence photography\n- ambiguous but useful visual details\n- not a cinematic poster'''
+          new = '''Visual direction:\n- the venue and evidence area must match the generated case exactly\n- use only architecture, furniture and environmental objects plausible for this venue and area\n- do not substitute a generic location\n- imperfect lighting appropriate to the area\n- subtle sensor noise and realistic optical imperfections\n- restrained documentary framing\n- ambiguous but useful visual details\n- not a cinematic poster\n\nCCTV continuity rules:\n- if this is CCTV, keep the camera physically fixed\n- preserve the same camera position, direction, lens character and environmental layout for repeated frames from this camera\n- allow people, doors, small objects and transient events to change naturally between frames\n- never move the camera or change the room into another location'''
+          if old not in text:
+              raise SystemExit('game.js visual direction block not found')
+          text = text.replace(old, new, 1)
+
+          old = '''          title,\n\n        description,'''
+          if old not in text:
+              raise SystemExit('game.js output marker not found')
+
+          game.write_text(text, encoding='utf-8')
+
+          app = Path('nocturne-vercel-3.5/frontend/app.js')
+          a = app.read_text(encoding='utf-8')
+
+          marker = 'function visual(type){'
+          if marker not in a:
+              raise SystemExit('app.js visual function not found')
+
+          start = a.index(marker)
+          end = a.find('\n}', start)
+          if end == -1:
+              raise SystemExit('app.js visual function end not found')
+          end += 2
+          current = a[start:end]
+          replacement = '''function visual(type){\n  setBusy(true, type === "cctv" ? "Retrieving CCTV frame..." : "Generating scene photograph...");\n\n  if(type === "cctv"){\n    const buttons = document.querySelectorAll("[data-camera-id]");\n    if(!buttons.length){\n      setBusy(false);\n      alert("No case cameras are available yet.");\n      return;\n    }\n    const selected = document.querySelector("[data-camera-id].selected");\n    const cameraId = selected?.dataset.cameraId || buttons[0].dataset.cameraId;\n    sock.emit("requestVisual", { type: "cctv", cameraId });\n    return;\n  }\n\n  sock.emit("requestVisual", {\n    type: "photo",\n    cameraId: "EVIDENCE-PHOTO"\n  });\n}'''
+          a = a.replace(current, replacement, 1)
+
+          # Add a compact camera selector immediately before the existing visualbox.
+          needle = '<div class="visualbox" id="visualbox">'
+          if needle not in a:
+              raise SystemExit('app.js does not contain visualbox markup')
+          camera_markup = '''<div class="cameraSelector" id="cameraSelector"></div>\n      <div class="visualbox" id="visualbox">'''
+          if 'id="cameraSelector"' not in a:
+              a = a.replace(needle, camera_markup, 1)
+
+          # Render camera buttons whenever state arrives, without changing existing panels.
+          render_marker = 'function render(){'
+          if render_marker not in a:
+              raise SystemExit('app.js render function not found')
+          helper = '''function renderCameraSelector(){\n  const box = $("cameraSelector");\n  if(!box) return;\n  const cams = Array.isArray(S.cameras) ? S.cameras : [];\n  box.innerHTML = cams.length ? cams.map((c,i)=>\n    `<button class="cameraBtn ${i===0?"selected":""}" data-camera-id="${esc(c.id)}" onclick="selectCamera(this)">${esc(c.id)} · ${esc(c.area)}</button>`\n  ).join("") : "";\n}\n\nfunction selectCamera(btn){\n  document.querySelectorAll("[data-camera-id]").forEach(b=>b.classList.remove("selected"));\n  btn.classList.add("selected");\n}\n\n'''
+          if 'function renderCameraSelector()' not in a:
+              a = a.replace(render_marker, helper + render_marker, 1)
+
+          # Add selector render directly after state assignment in the existing render function.
+          marker2 = '  S=d;\n  render();'
+          if marker2 in a and '  renderCameraSelector();\n  render();' not in a:
+              a = a.replace(marker2, '  S=d;\n  renderCameraSelector();\n  render();', 1)
+          elif '  S=d;\n  renderCameraSelector();\n  render();' not in a:
+              raise SystemExit('app.js state update marker not found')
+
+          app.write_text(a, encoding='utf-8')
+
+          print('Camera network patch completed.')
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add nocturne-vercel-3.5/backend/server/game.js nocturne-vercel-3.5/frontend/app.js
+          git diff --cached --check
+          git commit -m "Add case-aware dynamic CCTV cameras" || exit 0
+          git push
