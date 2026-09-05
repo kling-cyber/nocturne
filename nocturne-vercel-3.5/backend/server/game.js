@@ -3936,7 +3936,7 @@ module.exports = {
     !!ai,
 
   imageModel:
-    IMG,
+    comfy.CHECKPOINT,
 
   textModel:
     MODEL
