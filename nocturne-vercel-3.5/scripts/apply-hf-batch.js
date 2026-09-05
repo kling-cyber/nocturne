@@ -14,12 +14,12 @@ const visualMethod=`  async visual(pid, payload = {}) {
     const result=visualBatch.request(this,pid,payload);
     if(result?.error){ this.room.io.to(pid).emit('errorMessage',result.error); return; }
     const asset=result.asset;
-    const title=\`${asset.cameraId} // \${asset.kind.toUpperCase()} // \${asset.clock}\`;
+    const title=asset.cameraId+' // '+asset.kind.toUpperCase()+' // '+asset.clock;
     const description=asset.kind==='cctv'
-      ?\`Cached CCTV evidence from \${asset.area}. The timestamp is the simulated case capture time.\`
-      :\`Cached investigative scene photograph from \${asset.area}. It is an observation, not automatic truth.\`;
+      ?'Cached CCTV evidence from '+asset.area+'. The timestamp is the simulated case capture time.'
+      :'Cached investigative scene photograph from '+asset.area+'. It is an observation, not automatic truth.';
     this.add({type:'visual',title,description,reliability:asset.kind==='cctv'?75:65,image:asset.path,source:asset.cameraId,visualAssetId:asset.id});
-    this.event('VISUAL',\`\${actor.name} retrieved \${asset.kind.toUpperCase()} evidence from \${asset.cameraId}.\`);
+    this.event('VISUAL',actor.name+' retrieved '+asset.kind.toUpperCase()+' evidence from '+asset.cameraId+'.');
     this.room.io.to(pid).emit('visualReady',{title,description,reliability:asset.kind==='cctv'?75:65,image:asset.path});
     this.emit();
   }
@@ -41,7 +41,7 @@ let index=fs.readFileSync(path.join(b,'index.js'),'utf8');
 if(!index.includes('const visualBatch=require("./visual-batch");')) index=index.replace('const {GameRoom}=require("./game");','const {GameRoom}=require("./game");\nconst visualBatch=require("./visual-batch");',1);
 const marker='app.disable("x-powered-by");\n\n';
 const route="app.get('/visual-cache/:caseId/:filename',(req,res)=>{\n  const file=visualBatch.getFile(req.params.caseId,req.params.filename);\n  if(!file)return res.status(404).end();\n  res.setHeader('Cache-Control','public, max-age=3600');\n  res.sendFile(file);\n});\n\n";
-if(!index.includes("/visual-cache/:caseId/:filename")) index=index.replace(marker,marker+route,1);
+if(!index.includes('/visual-cache/:caseId/:filename')) index=index.replace(marker,marker+route,1);
 fs.writeFileSync(path.join(b,'index.js'),index);
 
 let app=fs.readFileSync(path.join(f,'app.js'),'utf8');
