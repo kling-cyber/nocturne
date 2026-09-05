@@ -5,6 +5,7 @@ const express=require("express");
 const http=require("http");
 const {Server}=require("socket.io");
 const {GameRoom}=require("./game");
+const visualBatch=require("./visual-batch");
 
 const app=express();
 const server=http.createServer(app);
@@ -73,6 +74,13 @@ function fail(socket,message){
    ========================================================= */
 
 app.disable("x-powered-by");
+
+app.get('/visual-cache/:caseId/:filename',(req,res)=>{
+  const file=visualBatch.getFile(req.params.caseId,req.params.filename);
+  if(!file)return res.status(404).end();
+  res.setHeader('Cache-Control','public, max-age=3600');
+  res.sendFile(file);
+});
 
 app.use(
   express.static(

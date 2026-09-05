@@ -7,6 +7,7 @@ let setupMode="create";
 let activeTab="act";
 let busy=false;
 let incomingQ=null;
+let visualCooldownUntil=0;
 
 window.NOCTURNE_MODE="MULTIPLAYER";
 window.NOCTURNE_DIFFICULTY="";
@@ -895,7 +896,7 @@ function render(){
                       e.image
                         ?`
                           <img
-                            src="${esc(e.image)}"
+                            src="${esc(visualSrc(e.image))}"
                             alt="${esc(e.title||'Case evidence image')}"
                             loading="lazy"
                           >
@@ -1454,7 +1455,13 @@ function accuse(id,name){
 ========================= */
 
 function visual(type){
-  setBusy(true, type === "cctv" ? "Retrieving CCTV frame..." : "Generating scene photograph...");
+  const now=Date.now();
+  if(now<visualCooldownUntil){
+    const seconds=Math.ceil((visualCooldownUntil-now)/1000);
+    return toast(`Visual request cooldown: ${seconds}s remaining.`);
+  }
+  visualCooldownUntil=now+30000;
+  setBusy(true, type === "cctv" ? "Retrieving cached CCTV frame..." : "Retrieving cached scene photograph...");
   if(type === "cctv"){
     const buttons=document.querySelectorAll("[data-camera-id]");
     if(!buttons.length){setBusy(false);alert("No case cameras are available yet.");return;}
@@ -1464,6 +1471,13 @@ function visual(type){
   sock.emit("requestVisual",{type:"photo",cameraId:"EVIDENCE-PHOTO"});
 }
 
+
+function visualSrc(src){
+  const value=String(src||'');
+  if(!value)return '';
+  if(/^https?:\/\//i.test(value)||value.startsWith('data:'))return value;
+  return (SOCKET_URL||'')+value;
+}
 
 function showVisual(d){
 
@@ -1477,7 +1491,7 @@ function showVisual(d){
     box.innerHTML=`
 
       <img
-        src="${esc(d.image||'')}"
+        src="${esc(visualSrc(d.image||''))}"
         alt="${esc(d.title||'Case visual evidence')}"
         loading="lazy"
       >

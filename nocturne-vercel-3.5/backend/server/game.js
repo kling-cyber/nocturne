@@ -3,7 +3,7 @@ require("dotenv").config();
 const crypto = require("crypto");
 
 const { buildCameraNetwork, getCamera } = require("./camera-network");
-const comfy = require("./comfy-client");
+const visualBatch = require("./visual-batch");
 
 let OpenAI = null;
 
@@ -496,8 +496,10 @@ class Sim {
 
     this.cameras = [];
     this.cameraFrames = new Map();
+    this.visualCooldowns = new Map();
 
     this.make(players, options);
+    visualBatch.register(this);
   }
 
 
@@ -2933,392 +2935,42 @@ Nearby people: ${this.people
     const actor =
       this.get(pid);
 
-
-    if (
-      !actor ||
-      !actor.alive ||
-      this.caseClosed
-    ) {
-
+    if (!actor || !actor.alive || this.caseClosed) {
       return;
     }
 
-
-    /*
-     * Prevent multiple image requests from
-     * running at the same time.
-     */
-
-    if (this.imageBusy) {
-
-      this.room.io
-        .to(pid)
-        .emit(
-          "errorMessage",
-          "Visual generation is already running. Please wait for the current image."
-        );
-
+    const result=visualBatch.request(this,pid,payload);
+    if(result?.error){
+      this.room.io.to(pid).emit('errorMessage',result.error);
       return;
     }
 
-
-    this.imageBusy =
-      true;
-
-
-    // A visual request advances the simulated clock by one minute so repeated
-    // captures from the same fixed camera represent the passage of time.
-    this.tick(1);
-
-
-    const type =
-      payload.type ===
-      "photo"
-        ? "photo"
-        : "cctv";
-
-
-    const requestedCameraId = clean(payload.cameraId || "", 30);
-    const camera = getCamera(this.cameras, requestedCameraId);
-    if (type === "cctv" && !camera) { this.room.io.to(pid).emit("errorMessage", "Invalid CCTV camera for this case. Select one of the available case cameras."); this.imageBusy=false; return; }
-    const cameraId = camera?.id || "EVIDENCE-PHOTO";
-    const evidenceArea = camera?.area || clean(payload.area || actor.location, 120);
-
-
-    const title =
-      `${cameraId} // ${type.toUpperCase()} // ${this.clock()}`;
-
-
-    /*
-     * STEP 1
-     * Confirm that OpenAI exists.
-     */
-
-    if (!comfy.configured) {
-
-      console.error(
-        "[NOCTURNE] ComfyUI image generation unavailable."
-      );
-
-      console.error(
-        "[NOCTURNE] GEMINI_API_KEY present:",
-        false
-      );
-
-      console.error(
-        "[NOCTURNE] OpenAI SDK loaded:",
-        !!OpenAI
-      );
-
-      console.error(
-        "[NOCTURNE] ComfyUI checkpoint:",
-        comfy.CHECKPOINT
-      );
-
-
-      this.room.io
-        .to(pid)
-        .emit(
-          "errorMessage",
-          "Image generation is not configured on the NOCTURNE server. Check COMFYUI_URL on Render and make sure the Cloudflare ComfyUI tunnel is online."
-        );
-
-
-      this.imageBusy =
-        false;
-
-      return;
-    }
-
-
-    try {
-
-      console.log(
-        `[NOCTURNE] Image request started. engine=ComfyUI, type=${type}, setting=${this.world[0]}, area=${evidenceArea}`
-      );
-
-
-      /*
-       * IMPORTANT:
-       * This is visual evidence only.
-       * It must not invent authoritative hidden truth.
-       */
-
-      const photoClueModes = [
-      "a mundane object subtly out of place, with no obvious reason for its position",
-      "a partially obscured reflection or background detail that creates a spatial inconsistency",
-      "a small environmental disturbance that could have several innocent explanations",
-      "a door, chair, drawer, curtain or cabinet left in a state that invites timeline questions",
-      "a faint trace-like environmental detail that is easy to dismiss without comparison to other evidence",
-      "a time-sensitive environmental detail such as lighting, equipment state or an unattended item",
-      "a subtle relationship between two ordinary objects that becomes meaningful only when cross-referenced with testimony",
-      "a partially visible detail at the edge of frame that is useful only when correlated with another observation"
-    ];
-
-    const photoClue =
-      photoClueModes[
-        Math.abs((this.t + this.seed.length) * 13) % photoClueModes.length
-      ];
-
-    const photoEvidenceRules =
-      type === "photo"
-        ? `\n\nDIFFICULT INDIRECT EVIDENCE RULES:
-- This photograph is an investigative evidence capture, not a clue card.
-- Include exactly one primary subtle anomaly: ${photoClue}.
-- Keep the anomaly small, naturally integrated and not centered for emphasis.
-- Never circle, highlight, label, explain or visually exaggerate the anomaly.
-- Surround it with believable mundane details so it can be mistaken for normal scene clutter.
-- Do not make the image itself reveal the Killer, motive, victim, weapon, sequence or answer.
-- Avoid readable text as the primary clue.
-- The investigator should need to compare this image with time, movement, testimony or another evidence source before its significance becomes clear.
-- Prefer ambiguity: the anomaly should support more than one plausible interpretation on first inspection.`
-        : "";
-
-      const cameraFrame =
-        type === "cctv"
-          ? this.cameraFrames.get(cameraId) || null
-          : null;
-
-      const continuityInstruction =
-        cameraFrame
-          ? `\n\nCONTINUITY FRAME: A previous frame from this exact camera exists and will be supplied as the source image. Preserve the architecture, walls, floor, doors, furniture, fixed objects, camera height, lens geometry and overall composition. The passage of time should primarily change transient people, positions and small temporary details. Do not redesign the location.`
-          : "";
-
-
-      const prompt =
-        `Create a fictional, non-graphic evidence image for the NOCTURNE murder-mystery game.
-
-This is ${
-          type === "photo"
-            ? "an investigative scene photograph"
-            : "a security camera still"
-        }.
-
-Setting:
-${this.world[0]}
-
-Available case locations:
-${this.world[1].join(", ")}
-
-Evidence area:
-${evidenceArea}
-
-Camera ID:
-${camera?.id || "not applicable"}
-
-Camera position:
-${camera?.position || "handheld investigator camera"}
-
-Camera view:
-${camera?.view || "documentary scene view"}
-
-Simulated case time:
-${this.clock()}
-
-Visual direction:
-- the venue and evidence area must match the generated case exactly
-- use only architecture, furniture and environmental objects plausible for this venue and area
-- do not substitute a generic location
-- imperfect lighting appropriate to the area
-- subtle sensor noise and realistic optical imperfections
-- restrained documentary framing
-- ambiguous but useful visual details
-- not a cinematic poster
-
-CCTV continuity rules:
-- if this is CCTV, keep the camera physically fixed
-- preserve the same camera position, direction, lens character and environmental layout for repeated frames from this camera
-- allow people, doors, small objects and transient events to change naturally between frames
-- never move the camera or change the room into another location
-
-Do not show:
-- gore
-- a corpse
-- violence
-- real people
-- celebrities
-- logos
-- readable credentials
-- real-world identifying information
-
-The image should look like imperfect fictional evidence.
-
-It may contain plausible visual observations, but it must not assert hidden case truth.${photoEvidenceRules}${continuityInstruction}`;
-
-
-      const negativePrompt =
-        "blurry, low quality, distorted, deformed, bad anatomy, extra limbs, text, watermark, cinematic poster, illustration, fantasy environment, generic location, redesigned architecture, changed camera angle";
-
-      let image;
-      let imageSource = "ComfyUI";
-
-      if (comfy.configured) {
-
-        console.log(
-          `[NOCTURNE] Sending image workflow to local ComfyUI. checkpoint=${comfy.CHECKPOINT}`
-        );
-
-        const generated =
-          await comfy.request({
-            prompt,
-            negativePrompt,
-            caseSeed: this.seed,
-            cameraId,
-            type,
-            capture: this.t,
-            initImage: cameraFrame
-          });
-
-        image = generated.image;
-        imageSource = "ComfyUI";
-
-        if (type === "cctv") {
-          this.cameraFrames.set(cameraId, {
-            image: generated.image,
-            buffer: generated.buffer,
-            filename: generated.filename,
-            subfolder: generated.subfolder || "",
-            type: generated.type || "output"
-          });
-        }
-
-        console.log(
-          `[NOCTURNE] ComfyUI image completed. prompt_id=${generated.promptId}`
-        );
-
-      }
-
-      const description =
-        "Visual evidence generated from the live case state. It is an observation, not automatic truth.";
-
-
-      const reliability =
-        type === "cctv"
-          ? 75
-          : 65;
-
-
-      const output = {
-
-        title,
-
-        description,
-
-        reliability,
-
-        image
-      };
-
-
-      /*
-       * Store the actual generated image
-       * as evidence.
-       */
-
-      this.add({
-
-        type:
-          "visual",
-
-        title,
-
-        description,
-
-        reliability,
-
-        image,
-
-        source:
-          cameraId
-      });
-
-
-      this.event(
-        "VISUAL",
-        `${actor.name} retrieved ${type.toUpperCase()} evidence from ${cameraId}.`
-      );
-
-
-      /*
-       * Send the generated image directly
-       * to the requesting player.
-       */
-
-      this.room.io
-        .to(pid)
-        .emit(
-          "visualReady",
-          output
-        );
-
-
-      this.emit();
-
-
-    } catch (e) {
-
-      /*
-       * THIS IS THE IMPORTANT FIX.
-       *
-       * The old version had:
-       *
-       * catch(e){}
-       *
-       * which completely hid the actual
-       * OpenAI error.
-       */
-
-      const message =
-        errorText(e);
-
-
-      console.error(
-        "=================================================="
-      );
-
-      console.error(
-        "[NOCTURNE] IMAGE GENERATION FAILED"
-      );
-
-      console.error(
-        "[NOCTURNE] Gemini image model:",
-        comfy.CHECKPOINT
-      );
-
-      console.error(
-        "[NOCTURNE] Error:",
-        message
-      );
-
-      console.error(
-        "[NOCTURNE] Full error object:",
-        e
-      );
-
-      console.error(
-        "=================================================="
-      );
-
-
-      /*
-       * Do NOT create fake evidence.
-       *
-       * Tell the frontend what actually happened.
-       */
-
-      this.room.io
-        .to(pid)
-        .emit(
-          "errorMessage",
-          `Image generation failed: ${message}`
-        );
-
-
-    } finally {
-
-      this.imageBusy =
-        false;
-    }
+    const asset=result.asset;
+    const title=asset.cameraId+' // '+asset.kind.toUpperCase()+' // '+asset.clock;
+    const description=asset.kind==='cctv'
+      ?'Cached CCTV evidence from '+asset.area+'. The timestamp is the simulated case capture time.'
+      :'Cached investigative scene photograph from '+asset.area+'. It is an observation, not automatic truth.';
+
+    this.add({
+      type:'visual',
+      title,
+      description,
+      reliability:asset.kind==='cctv'?75:65,
+      image:asset.path,
+      source:asset.cameraId,
+      visualAssetId:asset.id
+    });
+
+    this.event('VISUAL',actor.name+' retrieved '+asset.kind.toUpperCase()+' evidence from '+asset.cameraId+'.');
+
+    this.room.io.to(pid).emit('visualReady',{
+      title,
+      description,
+      reliability:asset.kind==='cctv'?75:65,
+      image:asset.path
+    });
+
+    this.emit();
   }
 
 
@@ -3516,6 +3168,8 @@ It may contain plausible visual observations, but it must not assert hidden case
      ======================================================= */
 
   emit() {
+
+    visualBatch.touch(this);
 
     this.room.io
       .to(this.room.code)
@@ -3995,7 +3649,7 @@ module.exports = {
     !!ai,
 
   imageModel:
-    comfy.CHECKPOINT,
+    "Hugging Face ZeroGPU",
 
   textModel:
     MODEL

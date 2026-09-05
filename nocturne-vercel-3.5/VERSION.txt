@@ -1,10 +1,10 @@
-NOCTURNE 4.0
+NOCTURNE 4.1
 Created & Owned by Kavish Koradia
 Copyright © 2026 Kavish Koradia
 Public Frontend: https://nocturne-dun-xi.vercel.app
 Backend: https://nocturne-8tko.onrender.com
 
-NOCTURNE 4.0 introduces:
+NOCTURNE 4.1 introduces:
 - Single Player mode
 - AI-controlled Killer in Single Player
 - Investigator role selection
@@ -12,3 +12,10 @@ NOCTURNE 4.0 introduces:
 - Autonomous AI characters
 - Server-authoritative hidden case truth
 - Multiplayer mode retained
+
+NOCTURNE 4.1 visual system:
+- Hugging Face ZeroGPU batch visual generation
+- Global visual generation queue across active cases
+- Case-specific temporary visual cache
+- 30-second per-player visual request limiter
+- Cached visual access during gameplay

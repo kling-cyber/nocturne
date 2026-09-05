@@ -1,8 +1,8 @@
 {
   "name": "nocturne-ai-murder-simulation",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "private": true,
-  "description": "NOCTURNE: a standalone multiplayer and single-player living mystery with a server-authoritative simulation.",
+  "description": "NOCTURNE: server-authoritative multiplayer and single-player living mystery with batch-generated visual evidence.",
   "engines": {
     "node": ">=20"
   },
