@@ -1720,3 +1720,21 @@ html,
 body{
   overflow-x:hidden;
 }
+
+
+/* NOCTURNE UI FIX 2026-09-05 */
+#leftSide .panel:has(#people),#leftSide .panel:has(#locations){overflow:hidden}
+#leftSide .panel:has(#locations)>h3{margin:0;padding:17px 19px;border-bottom:1px solid var(--line);font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:1.2;letter-spacing:.11em;color:var(--text)}
+#people.scrollList,#locations.scrollList{height:300px;max-height:300px;min-height:0;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable}
+#game .actions{min-width:0;overflow:hidden}
+#game .actions #tabs{display:flex;min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-gutter:stable}
+#game .actions #tabs button{flex:0 0 auto;white-space:nowrap}
+#game .actions>div:not(.hide) {min-width:0;max-width:100%;overflow-x:hidden}
+#game #evidence:not(.hide){max-height:420px;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable}
+#game .feed {min-width:0;overflow:hidden}
+#game .feed #events{max-height:430px;min-height:0;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable}
+#game .chat{min-width:0;overflow:hidden}
+#game .chat #chat{max-height:350px;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable}
+#game #memory{max-height:260px;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable}
+#game .scrollList,#game #events,#game #chat,#game #memory,#game #evidence:not(.hide),#game .actions #tabs{scrollbar-color:#46515e transparent}
+@media(max-width:700px){#people.scrollList,#locations.scrollList{height:260px;max-height:260px}#game #evidence:not(.hide){max-height:340px}#game .feed #events{max-height:320px}#game .chat #chat{max-height:280px}#game #memory{max-height:220px}}
