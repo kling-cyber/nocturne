@@ -1,0 +1,29 @@
+name: Apply NOCTURNE HF batch integration
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply and validate
+        run: |
+          node --check nocturne-vercel-3.5/scripts/apply-hf-batch.js
+          node nocturne-vercel-3.5/scripts/apply-hf-batch.js
+          node --check nocturne-vercel-3.5/backend/server/index.js
+          node --check nocturne-vercel-3.5/backend/server/game.js
+          node --check nocturne-vercel-3.5/backend/server/visual-batch.js
+          node --check nocturne-vercel-3.5/backend/server/hf-client.js
+          node --check nocturne-vercel-3.5/frontend/app.js
+      - name: Commit and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/apply-hf-batch.yml
+          git add nocturne-vercel-3.5 .github/workflows/apply-hf-batch.yml
+          git diff --cached --quiet || git commit -m "NOCTURNE 4.1 HF batch visual integration"
+          git push
