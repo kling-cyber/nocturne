@@ -8,7 +8,10 @@ const comfy = require('./comfy-client');
 const ROOT = process.env.NOCTURNE_VISUAL_CACHE_DIR || path.join(os.tmpdir(), 'nocturne-visual-cache');
 const TTL = Number(process.env.NOCTURNE_VISUAL_TTL_MS || 3600000);
 const BATCH = Math.max(1, Math.min(4, Number(process.env.COMFYUI_BATCH_SIZE || 1)));
-const GENERATION_TIMEOUT_MS = Math.max(1000, Number(process.env.COMFYUI_GENERATION_TIMEOUT_MS || 10000));
+
+// Keep the local GPU generation budget fixed at 10 seconds. This mirrors
+// comfy-client.js and prevents a stale Render env value from restoring 30s.
+const GENERATION_TIMEOUT_MS = 10000;
 const WIDTH = Number(process.env.COMFYUI_WIDTH || 768);
 const HEIGHT = Number(process.env.COMFYUI_HEIGHT || 512);
 const STEPS = Math.max(4, Math.min(12, Number(process.env.COMFYUI_STEPS || 8)));
