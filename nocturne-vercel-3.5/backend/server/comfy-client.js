@@ -10,11 +10,13 @@ const COMFY_URL = String(process.env.COMFYUI_URL || "").trim().replace(/\/$/, ""
 const CHECKPOINT = String(process.env.COMFYUI_CHECKPOINT || "Realistic_Vision_V5.1_fp16-no-ema.safetensors").trim();
 const WIDTH = Number(process.env.COMFYUI_WIDTH || 768);
 const HEIGHT = Number(process.env.COMFYUI_HEIGHT || 512);
-const STEPS = Number(process.env.COMFYUI_STEPS || 20);
+const STEPS = Number(process.env.COMFYUI_STEPS || 8);
 const CFG = Number(process.env.COMFYUI_CFG || 8);
 const SAMPLER = String(process.env.COMFYUI_SAMPLER || "euler").trim();
 const SCHEDULER = String(process.env.COMFYUI_SCHEDULER || "simple").trim();
 const CCTV_DENOISE = Number(process.env.COMFYUI_CCTV_DENOISE || 0.24);
+const GENERATION_TIMEOUT_MS = Math.max(1000, Number(process.env.COMFYUI_GENERATION_TIMEOUT_MS || 10000));
+const POLL_MS = Math.max(200, Number(process.env.COMFYUI_POLL_MS || 350));
 
 const clean = (value, max = 7000) => String(value ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").slice(0, max);
 
@@ -78,7 +80,7 @@ async function request({ prompt, negativePrompt, caseSeed, cameraId, type, captu
     payloadPrompt = baseWorkflow({ prompt, negativePrompt, seed });
   }
 
-  console.log(`[NOCTURNE] ComfyUI request: ${type} ${cameraId} ${WIDTH}x${HEIGHT} steps=${STEPS} cfg=${CFG} sampler=${SAMPLER} scheduler=${SCHEDULER} continuity=${continuity}`);
+  console.log(`[NOCTURNE] ComfyUI request: ${type} ${cameraId} ${WIDTH}x${HEIGHT} steps=${STEPS} cfg=${CFG} sampler=${SAMPLER} scheduler=${SCHEDULER} continuity=${continuity} timeout=${GENERATION_TIMEOUT_MS}ms`);
 
   const response = await fetch(`${COMFY_URL}/prompt`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_id: clientId, prompt: payloadPrompt }) });
   const text = await response.text();
@@ -93,9 +95,9 @@ async function request({ prompt, negativePrompt, caseSeed, cameraId, type, captu
 }
 
 async function waitForImage(promptId) {
-  const deadline = Date.now() + 180000;
+  const deadline = Date.now() + GENERATION_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    await new Promise(resolve => setTimeout(resolve, 1200));
+    await new Promise(resolve => setTimeout(resolve, POLL_MS));
     const response = await fetch(`${COMFY_URL}/history/${encodeURIComponent(promptId)}`);
     if (!response.ok) throw new Error(`ComfyUI /history HTTP ${response.status}.`);
     const history = await response.json();
@@ -117,7 +119,7 @@ async function waitForImage(promptId) {
       return { image: `data:image/png;base64,${buffer.toString("base64")}`, buffer, filename: image.filename, subfolder: image.subfolder || "", type: image.type || "output", promptId };
     }
   }
-  throw new Error("ComfyUI image generation timed out after 180 seconds.");
+  throw new Error(`ComfyUI image generation timed out after ${GENERATION_TIMEOUT_MS}ms.`);
 }
 
-module.exports = { configured: !!COMFY_URL, request, CHECKPOINT };
+module.exports = { configured: !!COMFY_URL, request, CHECKPOINT, generationTimeoutMs: GENERATION_TIMEOUT_MS };
