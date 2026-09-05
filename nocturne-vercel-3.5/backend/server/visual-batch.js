@@ -85,7 +85,7 @@ function entry(sim) {
   if (!cases.has(id)) {
     const dir = path.join(ROOT,id);
     fs.mkdirSync(dir,{recursive:true});
-    const e={id,sim,jobs:new Map(),assets:new Map(),lastActive:Date.now(),generationStartedAt:0};
+    const e={id,sim,jobs:new Map(),assets:new Map(),lastActive:Date.now()};
     cases.set(id,e);
     for(const j of plan(sim)) {
       e.jobs.set(j.id,{...j,status:'queued'});
@@ -118,6 +118,19 @@ function choose() {
   });
 
   return pending.slice(0,BATCH);
+}
+
+function referenceFor(e, job) {
+  if (job.kind !== 'cctv') return null;
+  const refs=[...e.assets.values()]
+    .filter(x=>x.kind==='cctv' && x.cameraId===job.cameraId && fs.existsSync(x.filePath))
+    .sort((a,b)=>b.createdAt-a.createdAt);
+  if(!refs.length) return null;
+  try {
+    return {buffer:fs.readFileSync(refs[0].filePath), filename:path.basename(refs[0].filePath)};
+  } catch (_) {
+    return null;
+  }
 }
 
 async function processQueue() {
@@ -159,7 +172,8 @@ async function processQueue() {
           caseSeed:e.sim.seed,
           cameraId:j.cameraId,
           type:j.kind,
-          capture:j.capture
+          capture:j.capture,
+          initImage:referenceFor(e,j)
         });
 
         if(!result?.buffer) throw new Error('ComfyUI returned no image buffer.');
