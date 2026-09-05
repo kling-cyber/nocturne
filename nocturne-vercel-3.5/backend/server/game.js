@@ -19,30 +19,14 @@ try {
 const apiKey =
   String(process.env.OPENAI_API_KEY || "").trim();
 
-const geminiApiKey =
-  String(process.env.GEMINI_API_KEY || "").trim();
-
 const ai =
   OpenAI && apiKey
     ? new OpenAI({ apiKey })
     : null;
 
-const geminiImageAi =
-  OpenAI && geminiApiKey
-    ? new OpenAI({
-        apiKey: geminiApiKey,
-        baseURL:
-          "https://generativelanguage.googleapis.com/v1beta/openai/"
-      })
-    : null;
-
 const MODEL =
   process.env.OPENAI_TEXT_MODEL ||
   "gpt-5.6-luna";
-
-const IMG =
-  process.env.GEMINI_IMAGE_MODEL ||
-  "gemini-2.5-flash-image";
 
 
 /* =========================================================
@@ -3004,10 +2988,10 @@ Nearby people: ${this.people
      * Confirm that OpenAI exists.
      */
 
-    if (!geminiImageAi) {
+    if (!comfy.configured) {
 
       console.error(
-        "[NOCTURNE] Image generation unavailable."
+        "[NOCTURNE] ComfyUI image generation unavailable."
       );
 
       console.error(
@@ -3119,7 +3103,7 @@ It may contain plausible visual observations, but it must not assert hidden case
         "blurry, low quality, distorted, deformed, bad anatomy, extra limbs, text, watermark, cinematic poster, illustration, fantasy environment, generic location";
 
       let image;
-      let imageSource = "Gemini";
+      let imageSource = "ComfyUI";
 
       if (comfy.configured) {
 
@@ -3143,7 +3127,7 @@ It may contain plausible visual observations, but it must not assert hidden case
           `[NOCTURNE] ComfyUI image completed. prompt_id=${generated.promptId}`
         );
 
-      } else if (geminiImageAi) {
+      } else if (false) {
 
         console.log(
           `[NOCTURNE] Calling Gemini Images API with ${IMG}...`
@@ -3151,7 +3135,7 @@ It may contain plausible visual observations, but it must not assert hidden case
 
         const response =
           await geminiImageAi.images.generate({
-            model: IMG,
+            model: "disabled",
             prompt,
             size: "1344x768",
             response_format: "b64_json",
