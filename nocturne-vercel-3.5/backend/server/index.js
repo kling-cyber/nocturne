@@ -69,7 +69,25 @@ io.on("connection",socket=>{
   socket.on("createSinglePlayer",async payload=>{const name=clean(payload?.name,24);if(!validName(name))return fail(socket,"Choose a name between 1 and 24 characters.");const investigatorRole=clean(payload?.investigatorRole,60);const difficulty=clean(payload?.difficulty,30).toUpperCase();const code=roomCode();const room=new GameRoom(code,io);room.mode="SINGLE_PLAYER";room.singlePlayer=true;rooms.set(code,room);try{if(typeof room.startSinglePlayer!=="function"){rooms.delete(code);return fail(socket,"Single-player mode is not available in this server build yet.");}await room.startSinglePlayer(socket,{name,requestedInvestigatorRole:investigatorRole,difficulty});}catch(error){console.error("[NOCTURNE] Single-player start error:",error);rooms.delete(code);fail(socket,"Unable to start the single-player case.");}});
   socket.on("playerAction",async payload=>{const room=findRoom(socket);if(room)await room.action(socket.id,clean(payload?.action,600));else fail(socket,"You are not in a case room.");});
   socket.on("killerDecision",()=>{const room=findRoom(socket);if(room)room.killerDecision(socket.id);});
-  socket.on("roleAction",payload=>{const room=findRoom(socket);if(!room?.sim)return;if(typeof room.sim.roleAction!=="function")roleSystem.install(room);if(typeof room.sim.roleAction==="function")room.sim.roleAction(socket.id,clean(payload?.action,300));});
+  socket.on("roleAction",payload=>{
+    const room=findRoom(socket);
+    const action=clean(payload?.action,300);
+    if(!room?.sim){
+      return fail(socket,"Your case session is no longer active. Please reconnect to the room.");
+    }
+    try{
+      if(typeof room.sim.roleAction!=="function")roleSystem.install(room);
+      if(typeof room.sim.roleAction!=="function"){
+        return fail(socket,"Role abilities are not available in this case yet. Please refresh and reconnect.");
+      }
+      room.sim.roleAction(socket.id,action);
+      socket.emit("roleActionResult",{ok:true,action});
+    }catch(error){
+      console.error("[NOCTURNE] Role action error:",error);
+      socket.emit("roleActionResult",{ok:false,action});
+      fail(socket,"The role ability could not be resolved. Please try again.");
+    }
+  });
   socket.on("investigate",payload=>{const room=findRoom(socket);if(room)room.investigate(socket.id,{target:clean(payload?.target,180),mode:payload?.mode,question:clean(payload?.question,400)});});
   socket.on("askQuestion",payload=>{const room=findRoom(socket);if(room)room.ask(socket.id,{targetId:clean(payload?.targetId,100),question:clean(payload?.question,400)});});
   socket.on("answerQuestion",payload=>{const room=findRoom(socket);if(room)room.answer(socket.id,{questionId:clean(payload?.questionId,100),answer:clean(payload?.answer,700)});});
