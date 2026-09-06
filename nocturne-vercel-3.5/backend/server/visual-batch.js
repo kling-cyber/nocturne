@@ -25,25 +25,23 @@ function scenePopulation(sim,area){
   return {present,names,jobs};
 }
 
-function jobsFor(sim){
-  const crimeBase=Number(sim.truth?.crimeStart||20);
+function jobsFor(sim,captureTick=Number(sim.t||0)){
+  const capture=Math.max(0,captureTick);
   const cams=(sim.cameras||[]);
   const jobs=[];
   for(const cam of cams){
-    for(const capture of [Math.max(0,crimeBase-4),crimeBase-1,crimeBase+1,crimeBase+4]){
-      const pop=scenePopulation(sim,cam.area);
-      const namedContext=pop.names?`Case personnel currently associated with this area include ${pop.names}. They are background context only; do not make identity visually explicit.`:'No specific case personnel are currently anchored to this area.';
-      jobs.push({id:`cctv-${safe(cam.id)}-${capture}`,kind:'cctv',cameraId:cam.id,area:cam.area,capture,
-        prompt:`Raw color CCTV surveillance frame from a fictional ${sim.world[0]}. Fixed ${cam.position||'ceiling-mounted'} security camera, ${cam.view||'fixed surveillance perspective'}, exact area: ${cam.area}. Stable physical camera position and believable lens height. Capture time ${clockAt(capture)}. ${namedContext} Make the location feel actively inhabited and naturally populated: include a believable mix of approximately 4 to 9 people where the space permits, such as staff, visitors, technicians, security personnel or guests, with varied clothing, ages and natural body language. People should be doing ordinary location-appropriate things: walking, waiting, talking in pairs, carrying equipment, checking a phone, entering a doorway, working at a desk or passing through the frame. Include realistic foreground, midground and background depth, occlusion, reflections and imperfect surveillance framing. At least one person should be visually clear enough to be useful as a movement/timeline observation, while other people remain incidental background activity. Do not turn the frame into a posed group photo. Realistic low-light surveillance footage, documentary security-camera quality, natural shadows, subtle sensor noise, mild compression, restrained fisheye character, believable exposure variation and slight motion softness. The scene is evidence, not an answer. Never reveal hidden case truth, never visually identify the Killer, victim, motive or exact crime sequence. No gore, corpse, violence, weapons in use, logos or readable text.` ,
-        negative:'empty room, deserted location, posed group portrait, studio photo, cinematic poster, fantasy, illustration, cartoon, duplicate people, extra limbs, malformed hands, distorted faces, distorted architecture, changed camera angle, excessive blur, watermark, readable text, gore, corpse, violence, weapon in use'});
-    }
+    const pop=scenePopulation(sim,cam.area);
+    const namedContext=pop.names?`Case personnel currently associated with this area include ${pop.names}. They are background context only; do not make identity visually explicit.`:'No specific case personnel are currently anchored to this area.';
+    jobs.push({id:`cctv-${safe(cam.id)}-${capture}`,kind:'cctv',cameraId:cam.id,area:cam.area,capture,
+      prompt:`Raw color CCTV surveillance frame from a fictional ${sim.world[0]}. Fixed ${cam.position||'ceiling-mounted'} security camera, ${cam.view||'fixed surveillance perspective'}, exact area: ${cam.area}. Stable physical camera position and believable lens height. Capture time ${clockAt(capture)}, exactly matching the current simulated case time when this visual request was made. ${namedContext} Make the location feel actively inhabited and naturally populated: include a believable mix of approximately 4 to 9 people where the space permits, such as staff, visitors, technicians, security personnel or guests, with varied clothing, ages and natural body language. People should be doing ordinary location-appropriate things: walking, waiting, talking in pairs, carrying equipment, checking a phone, entering a doorway, working at a desk or passing through the frame. Include realistic foreground, midground and background depth, occlusion, reflections and imperfect surveillance framing. At least one person should be visually clear enough to be useful as a movement/timeline observation, while other people remain incidental background activity. Do not turn the frame into a posed group photo. Realistic low-light surveillance footage, documentary security-camera quality, natural shadows, subtle sensor noise, mild compression, restrained fisheye character, believable exposure variation and slight motion softness. The scene is evidence, not an answer. Never reveal hidden case truth, never visually identify the Killer, victim, motive or exact crime sequence. No gore, corpse, violence, weapons in use, logos or readable text.` ,
+      negative:'empty room, deserted location, posed group portrait, studio photo, cinematic poster, fantasy, illustration, cartoon, duplicate people, extra limbs, malformed hands, distorted faces, distorted architecture, changed camera angle, excessive blur, watermark, readable text, gore, corpse, violence, weapon in use'});
   }
   const clues=['a mundane object subtly out of place','a partially obscured reflection or background detail creating a spatial inconsistency','a small environmental disturbance with several innocent explanations','a door, drawer, chair, curtain or cabinet left in a state that invites timeline questions','a faint environmental trace that only becomes meaningful when compared with another evidence source','a time-sensitive environmental detail such as equipment, lighting or an unattended item','a subtle relationship between two ordinary objects','a partially visible peripheral detail that requires cross-reference'];
   for(let i=0;i<3;i++){
     const area=sim.world[1][Math.abs(parseInt(hash(`${sim.seed}|photo|${i}`),16))%sim.world[1].length];
     const clue=clues[Math.abs(parseInt(hash(`${sim.seed}|clue|${i}`),16))%clues.length];
-    jobs.push({id:`photo-${i}-${hash(`${sim.seed}|photo|${i}`)}`,kind:'photo',cameraId:'EVIDENCE-PHOTO',area,capture:crimeBase,
-      prompt:`Detailed investigative scene photograph inside the fictional ${sim.world[0]}, exact area: ${area}. Documentary evidence photography with realistic texture, believable architecture, mundane clutter, natural lighting, accurate scale and careful depth. The location should feel lived-in rather than staged, with ordinary staff/visitors or environmental traces naturally present where appropriate, but no posed crowd. Include exactly one subtle indirect anomaly: ${clue}. Make the anomaly small, naturally integrated, ambiguous and not centered. The investigator must compare it with time, movement, testimony or another evidence source. Do not circle, label, explain or exaggerate it. Never reveal Killer, motive, victim, weapon or hidden answer. No gore, corpse, violence, logos or readable text.`,
+    jobs.push({id:`photo-${i}-${hash(`${sim.seed}|photo|${i}`)}-${capture}`,kind:'photo',cameraId:'EVIDENCE-PHOTO',area,capture,
+      prompt:`Detailed investigative scene photograph inside the fictional ${sim.world[0]}, exact area: ${area}. The photograph was requested at simulated case time ${clockAt(capture)} and must represent the scene at that same point in the case timeline. Documentary evidence photography with realistic texture, believable architecture, mundane clutter, natural lighting, accurate scale and careful depth. The location should feel lived-in rather than staged, with ordinary staff/visitors or environmental traces naturally present where appropriate, but no posed crowd. Include exactly one subtle indirect anomaly: ${clue}. Make the anomaly small, naturally integrated, ambiguous and not centered. The investigator must compare it with time, movement, testimony or another evidence source. Do not circle, label, explain or exaggerate it. Never reveal Killer, motive, victim, weapon or hidden answer. No gore, corpse, violence, logos or readable text.`,
       negative:'empty sterile room, obvious clue, arrows, circles, labels, highlighted object, staged scene, cinematic poster, fantasy, illustration, gore, corpse, violence, watermark, readable text'});
   }
   return jobs;
@@ -104,24 +102,24 @@ async function directRequest(sim,pid,payload={}){
   if(remaining>0)return {error:`Visual request cooldown: ${Math.ceil(remaining/1000)}s remaining.`};
   if(!comfy.configured)return {error:'Local visual engine is not configured.'};
   const type=payload.type==='photo'?'photo':'cctv';
-  const jobs=jobsFor(sim).filter(j=>j.kind===type);
+  const captureTick=Math.max(0,Number(sim.t||0));
+  const jobs=jobsFor(sim,captureTick).filter(j=>j.kind===type);
   let job=null;
   if(type==='cctv'){
     const cameraId=String(payload.cameraId||'').toUpperCase();
     const candidates=jobs.filter(j=>j.cameraId===cameraId);
-    const t=Number(sim.t||0);
-    job=(candidates.length?candidates:jobs).sort((a,b)=>Math.abs(a.capture-t)-Math.abs(b.capture-t))[0];
-  }else job=jobs[Math.abs(parseInt(hash(`${pid}|${sim.t}|photo`),16))%jobs.length];
+    job=(candidates.length?candidates:jobs)[0];
+  }else job=jobs[Math.abs(parseInt(hash(`${pid}|${captureTick}|photo`),16))%jobs.length];
   if(!job)return {error:'No visual source is available for this case.'};
   const lock=`${job.kind}:${job.cameraId}`;
   if(e.generating.has(lock))return {error:'A visual from this source is already being generated.'};
   e.generating.add(lock);sim.visualCooldowns.set(pid,Date.now());
   try{
-    console.log(`[NOCTURNE] Direct local visual generation: ${job.kind} ${job.cameraId} ${WIDTH}x${HEIGHT} steps=${STEPS} timeout=${GENERATION_TIMEOUT_MS}ms`);
+    console.log(`[NOCTURNE] Direct local visual generation: ${job.kind} ${job.cameraId} ${WIDTH}x${HEIGHT} steps=${STEPS} timeout=${GENERATION_TIMEOUT_MS}ms capture=${job.clock||clockAt(job.capture)}`);
     const result=await comfy.request({prompt:job.prompt,negativePrompt:job.negative,caseSeed:sim.seed,cameraId:job.cameraId,type:job.kind,capture:job.capture});
     if(!result?.image)throw new Error('ComfyUI returned no image data.');
     const asset={id:`${safe(job.kind)}-${safe(job.cameraId)}-${Date.now()}-${hash(result.promptId||Date.now())}`,kind:job.kind,cameraId:job.cameraId,area:job.area,capture:job.capture,clock:clockAt(job.capture),image:result.image};
-    console.log(`[NOCTURNE] Direct visual ready: ${job.kind} ${job.cameraId} ${job.area}`);
+    console.log(`[NOCTURNE] Direct visual ready: ${job.kind} ${job.cameraId} ${job.area} at ${asset.clock}`);
     return {asset};
   }catch(error){
     console.error(`[NOCTURNE] Direct local visual generation failed for ${job.kind} ${job.cameraId}:`,error?.message||error);
