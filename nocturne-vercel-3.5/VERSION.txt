@@ -1,10 +1,10 @@
-NOCTURNE 4.1.1
+NOCTURNE 4.1.2
 Created & Owned by Kavish Koradia
 Copyright © 2026 Kavish Koradia
 Public Frontend: https://nocturne-dun-xi.vercel.app
 Backend: https://nocturne-8tko.onrender.com
 
-NOCTURNE 4.1.1 introduces:
+NOCTURNE 4.1.2 introduces:
 - Single Player mode
 - AI-controlled Killer in Single Player
 - Investigator role selection
@@ -13,11 +13,12 @@ NOCTURNE 4.1.1 introduces:
 - Server-authoritative hidden case truth
 - Multiplayer mode retained
 
-NOCTURNE 4.1.1 visual system:
+NOCTURNE 4.1.2 visual system:
 - Local ComfyUI visual generation through the configured COMFYUI_URL
 - Realistic Vision V5.1 support
 - Case-specific temporary visual cache
 - CCTV camera continuity using generated reference frames
 - 10-second local image-generation timeout
-- 30-second per-player visual request limiter remains separate from generation
+- No per-player visual request cooldown
+- Visual requests remain protected against concurrent generation from the same source
 - Cached visual access during gameplay
