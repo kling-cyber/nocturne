@@ -1,83 +1,106 @@
 (function(){
-  const wait=(fn,n=0)=>{if(fn())return;if(n<120)setTimeout(()=>wait(fn,n+1),100);};
+  function socket(){
+    try{return window.sock||sock||null;}catch(e){return null;}
+  }
 
-  function install(){
-    if(window.__nocturneRoleUIInstalled)return true;
-    if(typeof window.render!=='function')return false;
-    if(typeof window.sock==='undefined'&&typeof sock==='undefined')return false;
+  function boot(attempt=0){
+    if(window.__nocturneRoleUIInstalled)return;
+
+    if(typeof window.render!=='function'||!socket()){
+      if(attempt<100)setTimeout(()=>boot(attempt+1),100);
+      else console.error('[NOCTURNE] Role UI could not find app.js/socket.io.');
+      return;
+    }
 
     window.__nocturneRoleUIInstalled=true;
     const baseRender=window.render;
     const basePrivate=window.renderPrivate;
-    let roleTimer=null;
+    let timer=null;
 
-    const socket=()=>{
-      try{return window.sock||sock||null;}catch(e){return window.sock||null;}
-    };
-
-    const finish=(message)=>{
-      if(roleTimer){clearTimeout(roleTimer);roleTimer=null;}
+    function finish(message){
+      if(timer){clearTimeout(timer);timer=null;}
       if(typeof setBusy==='function')setBusy(false);
       if(message&&typeof toast==='function')toast(message);
-    };
+    }
 
-    const showOutput=result=>{
-      const box=document.getElementById('roleOutput');
-      if(!box||!result)return;
-      const safeEsc=typeof esc==='function'?esc:x=>String(x??'');
-      box.innerHTML='<div class="role-output-title">'+safeEsc(result.title||'ROLE ABILITY')+'</div><div class="role-output-text">'+safeEsc(result.description||'Role ability resolved.')+'</div>';
-      box.classList.add('active');
-    };
-
-    const roleAction=raw=>{
-      const action=String(raw||'').trim();
-      if(!action)return;
+    function send(action){
+      const text=String(action||'').trim();
       const s=socket();
-      console.log('[NOCTURNE] ROLE BUTTON:',action,'socket=',!!s,'connected=',!!s?.connected);
-      if(!s||!s.connected){finish('The case connection is not available.');return;}
-      if(typeof setBusy==='function')setBusy(true,'Resolving role ability…');
-      s.emit('roleAction',{action});
-      if(roleTimer)clearTimeout(roleTimer);
-      roleTimer=setTimeout(()=>finish('The role ability did not receive a server response. Please try again.'),10000);
-    };
+      console.log('[NOCTURNE] ROLE SEND',text,'connected=',!!s?.connected);
+      if(!text)return;
+      if(!s||!s.connected){finish('The case server is not connected.');return;}
+      if(typeof setBusy==='function')setBusy(true,'Resolving '+text+'…');
+      s.emit('roleAction',{action:text});
+      if(timer)clearTimeout(timer);
+      timer=setTimeout(()=>finish('No role response arrived from the case server.'),10000);
+    }
 
-    window.nocturneRoleAction=roleAction;
-    window.nocturneNamedRoleAction=kind=>{const name=prompt(kind+' · enter the exact character name:');if(name?.trim())roleAction(kind+' '+name.trim());};
-    window.nocturneKillerAction=()=>{const name=prompt('ELIMINATE · enter the exact living target name:');if(name?.trim())roleAction('KILL '+name.trim());};
+    function named(kind){
+      const name=prompt(kind+' · enter the exact character name:');
+      if(name&&name.trim())send(kind+' '+name.trim());
+    }
+
+    window.nocturneRoleAction=send;
+    window.nocturneNamedRoleAction=named;
+    window.nocturneKillerAction=()=>named('KILL');
 
     function renderRolePanel(){
       const box=document.getElementById('act');
       if(!box||typeof me==='undefined'||!me)return;
       const role=String(me.role||'INVESTIGATOR').toUpperCase();
       const free=document.getElementById('free')?.value||'';
-      let special='';
-      if(role==='KILLER')special='<div class="rolePanel killerPanel"><h3>KILLER ABILITIES</h3><div class="action-grid"><div class="card danger" data-role-action="KILL"><b>ELIMINATE</b><p>Choose a living target during the critical window.</p></div><div class="card danger" data-role-action="CONCEAL SCENE"><b>CONCEAL SCENE</b><p>Disturb the scene after the crime. This can create evidence.</p></div></div></div>';
-      else if(role==='DETECTIVE')special='<div class="rolePanel detectivePanel"><h3>DETECTIVE ABILITIES</h3><div class="action-grid"><div class="card" data-role-action="ANALYZE CASE"><b>ANALYZE CASE</b><p>Cross-reference recent evidence.</p></div><div class="card" data-role-named="INTERROGATE"><b>INTERROGATE</b><p>Formally question a person.</p></div><div class="card" data-role-named="MARK SUSPECT"><b>MARK SUSPECT</b><p>Flag a person of interest for the team.</p></div></div></div>';
-      else special='<div class="rolePanel investigatorPanel"><h3>INVESTIGATOR ABILITIES</h3><div class="action-grid"><div class="card" data-role-action="FORENSICS"><b>FORENSICS</b><p>Perform a focused trace and object search.</p></div><div class="card" data-role-named="TRACK"><b>TRACK</b><p>Follow a person\'s movement trail.</p></div><div class="card" data-role-action="RECON"><b>RECON</b><p>Survey the current area for nearby activity.</p></div></div></div>';
-      const common='<div class="rolePanel commonPanel"><h3>COMMON ACTIONS</h3><div class="action-grid"><div class="card" onclick="prefill(\'Talk to someone nearby\')"><b>Talk</b><p>Talk to someone nearby</p></div><div class="card" onclick="prefill(\'Move somewhere\')"><b>Move</b><p>Move somewhere</p></div><div class="card" onclick="prefill(\'Search the current area\')"><b>Search</b><p>Search the current area</p></div><div class="card" onclick="prefill(\'Follow a person\')"><b>Follow</b><p>Follow a person</p></div><div class="card" onclick="prefill(\'Wait and observe\')"><b>Observe</b><p>Wait and observe</p></div><div class="card" onclick="prefill(\'Review what I know\')"><b>Recall</b><p>Review what I know</p></div></div></div>';
-      box.innerHTML=special+'<div id="roleOutput" class="role-output"><div class="role-output-title">ROLE OUTPUT</div><div class="role-output-text">Use a role ability to receive a case-specific result here.</div></div>'+common+'<div class="composer"><input id="free" maxlength="600" placeholder="Describe exactly what your character tries to do…" value="'+(typeof esc==='function'?esc(free):'')+'"><button class="primary" onclick="send()">DO ACTION</button></div>';
+      const button=(label,action,desc,extra='')=>`<button type="button" class="card roleActionButton ${extra}" data-role-action="${esc(action)}"><b>${esc(label)}</b><p>${esc(desc)}</p></button>`;
+      const namedButton=(label,action,desc)=>`<button type="button" class="card roleActionButton" data-role-named="${esc(action)}"><b>${esc(label)}</b><p>${esc(desc)}</p></button>`;
 
-      box.querySelectorAll('[data-role-action]').forEach(el=>el.addEventListener('click',()=>roleAction(el.dataset.roleAction)));
-      box.querySelectorAll('[data-role-named]').forEach(el=>el.addEventListener('click',()=>{const kind=el.dataset.roleNamed;const name=prompt(kind+' · enter the exact character name:');if(name?.trim())roleAction(kind+' '+name.trim());}));
+      let special='';
+      if(role==='KILLER'){
+        special='<div class="rolePanel killerPanel"><h3>KILLER ABILITIES</h3><div class="action-grid">'+namedButton('ELIMINATE','KILL','Choose a living target during the critical window.')+button('CONCEAL SCENE','CONCEAL SCENE','Disturb the scene after the crime. This can create evidence.','danger')+'</div></div>';
+      }else if(role==='DETECTIVE'){
+        special='<div class="rolePanel detectivePanel"><h3>DETECTIVE ABILITIES</h3><div class="action-grid">'+button('ANALYZE CASE','ANALYZE CASE','Cross-reference recent evidence.')+namedButton('INTERROGATE','INTERROGATE','Formally question a person.')+namedButton('MARK SUSPECT','MARK SUSPECT','Flag a person of interest for the team.')+'</div></div>';
+      }else{
+        special='<div class="rolePanel investigatorPanel"><h3>INVESTIGATOR ABILITIES</h3><div class="action-grid">'+button('FORENSICS','FORENSICS','Perform a focused trace and object search.')+namedButton('TRACK','TRACK','Follow a person\'s movement trail.')+button('RECON','RECON','Survey the current area for nearby activity.')+'</div></div>';
+      }
+
+      const common='<div class="rolePanel commonPanel"><h3>COMMON ACTIONS</h3><div class="action-grid"><button type="button" class="card" onclick="prefill(\'Talk to someone nearby\')"><b>Talk</b><p>Talk to someone nearby</p></button><button type="button" class="card" onclick="prefill(\'Move somewhere\')"><b>Move</b><p>Move somewhere</p></button><button type="button" class="card" onclick="prefill(\'Search the current area\')"><b>Search</b><p>Search the current area</p></button><button type="button" class="card" onclick="prefill(\'Follow a person\')"><b>Follow</b><p>Follow a person</p></button><button type="button" class="card" onclick="prefill(\'Wait and observe\')"><b>Observe</b><p>Wait and observe</p></button><button type="button" class="card" onclick="prefill(\'Review what I know\')"><b>Recall</b><p>Review what I know</p></button></div></div>';
+
+      box.innerHTML=special+'<div id="roleOutput" class="role-output"><div class="role-output-title">ROLE OUTPUT</div><div class="role-output-text">Use a role ability to receive a case-specific result here.</div></div>'+common+'<div class="composer"><input id="free" maxlength="600" placeholder="Describe exactly what your character tries to do…" value="'+esc(free)+'"><button class="primary" type="button" onclick="send()">DO ACTION</button></div>';
+
+      box.querySelectorAll('[data-role-action]').forEach(el=>el.onclick=()=>send(el.dataset.roleAction));
+      box.querySelectorAll('[data-role-named]').forEach(el=>el.onclick=()=>named(el.dataset.roleNamed));
+    }
+
+    function showOutput(result){
+      const box=document.getElementById('roleOutput');
+      if(!box||!result)return;
+      box.innerHTML='<div class="role-output-title">'+esc(result.title||'ROLE ABILITY')+'</div><div class="role-output-text">'+esc(result.description||'Role ability resolved.')+'</div>';
+      box.classList.add('active');
     }
 
     window.render=function(){baseRender();renderRolePanel();};
-    window.renderPrivate=function(){basePrivate();};
-    window.__nocturneRenderRolePanel=renderRolePanel;
+    window.renderPrivate=function(){basePrivate();renderRolePanel();};
+    window.__nocturneRoleDiagnostics=()=>({installed:true,connected:!!socket()?.connected,role:me?.role||null,render:typeof window.render});
 
     const s=socket();
-    if(s){
-      s.on('stateUpdate',()=>finish());
-      s.on('errorMessage',message=>finish(message));
-      s.on('disconnect',()=>finish('Connection to the case server was lost.'));
-      s.on('roleActionResult',result=>{finish(result?.ok?'Role ability resolved.':(result?.message||'The role ability failed.'));if(result?.ok)showOutput(result);});
-      s.on('roleActionOutput',result=>{finish();showOutput(result);});
-    }
+    s.on('stateUpdate',()=>finish());
+    s.on('errorMessage',message=>finish(message));
+    s.on('disconnect',()=>finish('Connection to the case server was lost.'));
+    s.on('roleActionResult',result=>{console.log('[NOCTURNE] ROLE RESULT',result);finish(result?.ok?'Role ability resolved.':(result?.message||'Role ability failed.'));if(result?.ok)showOutput(result);});
+    s.on('roleActionOutput',result=>{console.log('[NOCTURNE] ROLE OUTPUT',result);finish();showOutput(result);});
+
+    // Delegated safety net. Even if a render replaces the buttons, clicks
+    // still resolve through the same server-authorized action path.
+    document.addEventListener('click',event=>{
+      const el=event.target.closest?.('[data-role-action],[data-role-named]');
+      if(!el)return;
+      event.preventDefault();
+      event.stopPropagation();
+      if(el.dataset.roleAction)send(el.dataset.roleAction);
+      else if(el.dataset.roleNamed)named(el.dataset.roleNamed);
+    },true);
 
     if(typeof S!=='undefined'&&S)window.render();
-    console.log('[NOCTURNE] Role UI installed and role button listeners bound.');
-    return true;
+    console.log('[NOCTURNE] ROLE SYSTEM READY',window.__nocturneRoleDiagnostics());
   }
 
-  wait(install);
+  boot();
 })();
