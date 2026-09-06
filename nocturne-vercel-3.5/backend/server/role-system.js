@@ -10,7 +10,6 @@ function output(room,pid,sim,p,result){
  const out={ok:true,roleAction:true,title,description,action};
  sim.add({type:'role',title,description,reliability:78,source:p?.name||'ROLE ACTION'});
  sim.event('ROLE ACTION',`${p?.name||'An investigator'} completed a specialized role action: ${title}`);
- room.io.to(pid).emit('roleActionOutput',out);
  return out;
 }
 function install(room){
