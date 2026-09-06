@@ -12,7 +12,7 @@ roleSystem.installRoomStart(GameRoom);
 const app=express();
 const server=http.createServer(app);
 const allowedOrigins=(process.env.FRONTEND_URL||"").split(",").map(x=>x.trim()).filter(Boolean);
-const io=new Server(server,{cors:{origin:(origin,cb)=>{if(!origin||allowedOrigins.length===0||allowedOrigins.includes(origin))return cb(null,true);cb(new Error("Origin not allowed");},credentials:false},maxHttpBufferSize:5e6});
+const io=new Server(server,{cors:{origin:(origin,cb)=>{if(!origin||allowedOrigins.length===0||allowedOrigins.includes(origin))return cb(null,true);cb(new Error("Origin not allowed"));},credentials:false},maxHttpBufferSize:5e6});
 const PORT=Number(process.env.PORT||3000);
 const rooms=new Map();
 const ROOM_ALPHABET="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
