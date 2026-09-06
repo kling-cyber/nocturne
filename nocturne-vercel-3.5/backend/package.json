@@ -1,6 +1,6 @@
 {
   "name": "nocturne-ai-murder-simulation",
-  "version": "4.1.1",
+  "version": "4.1.6",
   "private": true,
   "description": "NOCTURNE: server-authoritative multiplayer and single-player living mystery with local ComfyUI visual evidence generation.",
   "engines": {
@@ -9,12 +9,11 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "check": "node --check server/index.js && node --check server/game.js && node --check public/app.js"
+    "check": "node --check server/index.js && node --check server/game.js && node --check server/role-system.js && node --check public/app.js"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
-    "openai": "^6.8.1",
     "socket.io": "^4.8.1"
   }
 }
