@@ -6,11 +6,13 @@ const http=require("http");
 const {Server}=require("socket.io");
 const {GameRoom}=require("./game");
 const visualBatch=require("./visual-batch");
+const roleSystem=require("./role-system");
+roleSystem.installRoomStart(GameRoom);
 
 const app=express();
 const server=http.createServer(app);
 const allowedOrigins=(process.env.FRONTEND_URL||"").split(",").map(x=>x.trim()).filter(Boolean);
-const io=new Server(server,{cors:{origin:(origin,cb)=>{if(!origin||allowedOrigins.length===0||allowedOrigins.includes(origin))return cb(null,true);cb(new Error("Origin not allowed"));},credentials:false},maxHttpBufferSize:5e6});
+const io=new Server(server,{cors:{origin:(origin,cb)=>{if(!origin||allowedOrigins.length===0||allowedOrigins.includes(origin))return cb(null,true);cb(new Error("Origin not allowed");},credentials:false},maxHttpBufferSize:5e6});
 const PORT=Number(process.env.PORT||3000);
 const rooms=new Map();
 const ROOM_ALPHABET="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -21,7 +23,7 @@ function fail(socket,message){socket.emit("errorMessage",message);}
 
 app.disable("x-powered-by");
 app.use(express.static(path.join(__dirname,"..","public"),{etag:true,maxAge:process.env.NODE_ENV==="production"?"1h":0}));
-app.get("/health",(req,res)=>res.json({ok:true,service:"nocturne",version:"4.0.1",rooms:rooms.size}));
+app.get("/health",(req,res)=>res.json({ok:true,service:"nocturne",version:"4.0.2",rooms:rooms.size}));
 
 function roomCode(){let code;do{code=Array.from({length:4},()=>ROOM_ALPHABET[Math.floor(Math.random()*ROOM_ALPHABET.length)]).join("");}while(rooms.has(code));return code;}
 function findRoom(socket){for(const room of rooms.values())if(room.players.has(socket.id))return room;return null;}
@@ -33,12 +35,12 @@ io.on("connection",socket=>{
   socket.on("createSinglePlayer",async payload=>{const name=clean(payload?.name,24);if(!validName(name))return fail(socket,"Choose a name between 1 and 24 characters.");const investigatorRole=clean(payload?.investigatorRole,60);const difficulty=clean(payload?.difficulty,30).toUpperCase();const code=roomCode();const room=new GameRoom(code,io);room.mode="SINGLE_PLAYER";room.singlePlayer=true;rooms.set(code,room);try{if(typeof room.startSinglePlayer!=="function"){rooms.delete(code);return fail(socket,"Single-player mode is not available in this server build yet.");}await room.startSinglePlayer(socket,{name,requestedInvestigatorRole:investigatorRole,difficulty});}catch(error){console.error("[NOCTURNE] Single-player start error:",error);rooms.delete(code);fail(socket,"Unable to start the single-player case.");}});
   socket.on("playerAction",async payload=>{const room=findRoom(socket);if(room)await room.action(socket.id,clean(payload?.action,600));else fail(socket,"You are not in a case room.");});
   socket.on("killerDecision",()=>{const room=findRoom(socket);if(room)room.killerDecision(socket.id);});
+  socket.on("roleAction",payload=>{const room=findRoom(socket);if(room?.sim)room.sim.roleAction(socket.id,clean(payload?.action,300));});
   socket.on("investigate",payload=>{const room=findRoom(socket);if(room)room.investigate(socket.id,{target:clean(payload?.target,180),mode:payload?.mode,question:clean(payload?.question,400)});});
   socket.on("askQuestion",payload=>{const room=findRoom(socket);if(room)room.ask(socket.id,{targetId:clean(payload?.targetId,100),question:clean(payload?.question,400)});});
   socket.on("answerQuestion",payload=>{const room=findRoom(socket);if(room)room.answer(socket.id,{questionId:clean(payload?.questionId,100),answer:clean(payload?.answer,700)});});
   socket.on("accuse",payload=>{const room=findRoom(socket);if(room)room.accuse(socket.id,clean(payload?.targetId,100));});
 
-  /* Direct local GPU visual generation. The image is returned as an in-memory data URL. */
   socket.on("requestVisual",async payload=>{
     const room=findRoom(socket);if(!room||!room.sim)return;
     const actor=room.sim.get(socket.id);if(!actor||!actor.alive||room.sim.caseClosed)return;
@@ -57,4 +59,4 @@ io.on("connection",socket=>{
   socket.on("disconnect",()=>{const room=findRoom(socket);if(!room)return;room.remove(socket.id);if(room.players.size===0)rooms.delete(room.code);});
 });
 
-server.listen(PORT,()=>console.log(`NOCTURNE 4.0.1 online server listening on port ${PORT}`));
+server.listen(PORT,()=>console.log(`NOCTURNE 4.0.2 online server listening on port ${PORT}`));
