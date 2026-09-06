@@ -1,0 +1,10 @@
+/* Evidence cards without an image should use the entire card width.
+   The base .ev layout reserves a 145px media column, even when no image exists. */
+#game #evidence .ev:not(:has(img)){
+  grid-template-columns:minmax(0,1fr);
+}
+
+/* Keep the original media/text split when visual evidence is present. */
+#game #evidence .ev:has(img){
+  grid-template-columns:145px minmax(0,1fr);
+}
