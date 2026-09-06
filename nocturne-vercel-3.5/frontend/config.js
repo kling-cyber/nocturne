@@ -2,9 +2,12 @@
 // Example: https://nocturne-api.example.com
 window.NOCTURNE_SERVER_URL = "https://nocturne-8tko.onrender.com";
 
-// Load role-specific multiplayer controls after app.js has initialized.
+// Load role-specific multiplayer controls and richer evidence presentation after app.js has initialized.
 window.addEventListener("load",()=>{
-  const s=document.createElement("script");
-  s.src="/role-ui.js?v=4.0.4";
-  document.head.appendChild(s);
+  const role=document.createElement("script");
+  role.src="/role-ui.js?v=4.0.4";
+  document.head.appendChild(role);
+  const evidence=document.createElement("script");
+  evidence.src="/evidence-ui.js?v=4.1.0";
+  document.head.appendChild(evidence);
 },{once:true});
