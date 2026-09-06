@@ -22,12 +22,14 @@ function roomCode(){let code;do{code=Array.from({length:4},()=>ROOM_ALPHABET[Mat
 function findRoom(socket){for(const room of rooms.values())if(room.players.has(socket.id))return room;return null;}
 
 function installRoles(room,reason="runtime"){
-  if(!room?.sim||room.sim.singlePlayer)return false;
+  if(!room?.sim||room.sim.singlePlayer===true)return false;
   try{
+    room.mode="MULTIPLAYER";
+    room.singlePlayer=false;
     room.sim.__nocturneRolesInstalled=false;
     roleSystem.install(room);
     const ok=typeof room.sim.roleAction==="function";
-    console.log("[NOCTURNE] role runtime",room.code,reason,"installed="+ok,"humans="+room.sim.people.filter(p=>p.isPlayer).length,"phase="+room.sim.phase);
+    console.log("[NOCTURNE] role runtime",room.code,reason,"installed="+ok,"roomMode="+String(room.mode),"simMode="+String(room.sim.mode),"singlePlayer="+String(room.sim.singlePlayer),"humans="+room.sim.people.filter(p=>p.isPlayer).length,"phase="+room.sim.phase);
     return ok;
   }catch(error){
     console.error("[NOCTURNE] role runtime install failed",room.code,reason,error);
@@ -37,23 +39,25 @@ function installRoles(room,reason="runtime"){
 
 app.disable("x-powered-by");
 app.use(express.static(path.join(__dirname,"..","public"),{etag:true,maxAge:process.env.NODE_ENV==="production"?"1h":0}));
-app.get("/health",(req,res)=>res.json({ok:true,service:"nocturne",version:"4.2.2",rooms:rooms.size}));
+app.get("/health",(req,res)=>res.json({ok:true,service:"nocturne",version:"4.2.3",rooms:rooms.size}));
 
 io.on("connection",socket=>{
   console.log("[NOCTURNE] socket connected",socket.id);
-  socket.on("createRoom",payload=>{const name=clean(payload?.name,24);if(!validName(name))return fail(socket,"Choose a name between 1 and 24 characters.");const code=roomCode();const room=new GameRoom(code,io);rooms.set(code,room);room.addPlayer(socket,name);});
-  socket.on("joinRoom",payload=>{const code=clean(payload?.code,4).toUpperCase();const name=clean(payload?.name,24);if(!validRoomCode(code))return fail(socket,"Enter a valid 4-character room code.");if(!validName(name))return fail(socket,"Choose a name between 1 and 24 characters.");const room=rooms.get(code);if(!room)return fail(socket,"Room not found.");if(room.started)return fail(socket,"Case already started.");if(room.players.size>=8)return fail(socket,"Room full.");room.addPlayer(socket,name);});
-  socket.on("launchCase",async()=>{const room=findRoom(socket);if(!room)return fail(socket,"You are not in a case room.");if(room.mode==="SINGLE_PLAYER")return fail(socket,"Single-player cases start automatically.");if(room.hostId!==socket.id)return fail(socket,"Only the case host can start the case.");if(room.players.size<2)return fail(socket,"At least 2 human players are required for Multiplayer. Use Single Player for solo play.");try{await room.start();if(!installRoles(room,"case-start"))throw new Error("Role controller was not installed");room.sim.emit();console.log("[NOCTURNE] multiplayer role system ready",room.code);}catch(error){console.error("[NOCTURNE] Multiplayer start error:",error);fail(socket,"Unable to start the multiplayer case.");}});
+  socket.on("createRoom",payload=>{const name=clean(payload?.name,24);if(!validName(name))return fail(socket,"Choose a name between 1 and 24 characters.");const code=roomCode();const room=new GameRoom(code,io);room.mode="MULTIPLAYER";room.singlePlayer=false;rooms.set(code,room);room.addPlayer(socket,name);});
+  socket.on("joinRoom",payload=>{const code=clean(payload?.code,4).toUpperCase();const name=clean(payload?.name,24);if(!validRoomCode(code))return fail(socket,"Enter a valid 4-character room code.");if(!validName(name))return fail(socket,"Choose a name between 1 and 24 characters.");const room=rooms.get(code);if(!room)return fail(socket,"Room not found.");if(room.started)return fail(socket,"Case already started.");if(room.players.size>=8)return fail(socket,"Room full.");if(room.mode==="SINGLE_PLAYER"||room.singlePlayer===true)return fail(socket,"That room is a single-player case.");room.mode="MULTIPLAYER";room.singlePlayer=false;room.addPlayer(socket,name);});
+  socket.on("launchCase",async()=>{const room=findRoom(socket);if(!room)return fail(socket,"You are not in a case room.");if(room.sim?.singlePlayer===true||room.singlePlayer===true)return fail(socket,"Single-player cases start automatically.");room.mode="MULTIPLAYER";room.singlePlayer=false;if(room.hostId!==socket.id)return fail(socket,"Only the case host can start the case.");if(room.players.size<2)return fail(socket,"At least 2 human players are required for Multiplayer. Use Single Player for solo play.");try{await room.start();room.mode="MULTIPLAYER";room.singlePlayer=false;if(!installRoles(room,"case-start"))throw new Error("Role controller was not installed");room.sim.emit();console.log("[NOCTURNE] multiplayer role system ready",room.code,"mode="+room.mode,"simMode="+room.sim.mode,"singlePlayer="+room.sim.singlePlayer);}catch(error){console.error("[NOCTURNE] Multiplayer start error:",error);fail(socket,"Unable to start the multiplayer case.");}});
   socket.on("createSinglePlayer",async payload=>{const name=clean(payload?.name,24);if(!validName(name))return fail(socket,"Choose a name between 1 and 24 characters.");const investigatorRole=clean(payload?.investigatorRole,60);const difficulty=clean(payload?.difficulty,30).toUpperCase();const code=roomCode();const room=new GameRoom(code,io);room.mode="SINGLE_PLAYER";room.singlePlayer=true;rooms.set(code,room);try{if(typeof room.startSinglePlayer!=="function"){rooms.delete(code);return fail(socket,"Single-player mode is not available in this server build yet.");}await room.startSinglePlayer(socket,{name,requestedInvestigatorRole:investigatorRole,difficulty});}catch(error){console.error("[NOCTURNE] Single-player start error:",error);rooms.delete(code);fail(socket,"Unable to start the single-player case.");}});
   socket.on("playerAction",async payload=>{const room=findRoom(socket);if(room)await room.action(socket.id,clean(payload?.action,600));else fail(socket,"You are not in a case room.");});
   socket.on("killerDecision",()=>{const room=findRoom(socket);if(room)room.killerDecision(socket.id);});
   socket.on("roleAction",async payload=>{
     const room=findRoom(socket),action=clean(payload?.action,300);
-    console.log("[NOCTURNE] roleAction received",socket.id,JSON.stringify(action),room?.code||"NO_ROOM");
+    console.log("[NOCTURNE] roleAction received",socket.id,JSON.stringify(action),room?.code||"NO_ROOM","roomMode="+String(room?.mode),"roomSinglePlayer="+String(room?.singlePlayer),"simMode="+String(room?.sim?.mode),"simSinglePlayer="+String(room?.sim?.singlePlayer));
     if(!room?.sim)return fail(socket,"Your case session is no longer active. Please reconnect to the room.");
     if(!action)return fail(socket,"Choose a role ability first.");
-    if(room.mode==="SINGLE_PLAYER")return fail(socket,"Human role abilities are available in multiplayer cases.");
-    if(!installRoles(room,"role-action")){console.error("[NOCTURNE] role runtime unavailable",room.code,typeof room.sim.roleAction,room.sim.phase);return socket.emit("roleActionResult",{ok:false,action,message:"The multiplayer role controller is not available in this server process."});}
+    if(room.sim.singlePlayer===true)return fail(socket,"Human role abilities are available in multiplayer cases.");
+    room.mode="MULTIPLAYER";
+    room.singlePlayer=false;
+    if(!installRoles(room,"role-action")){console.error("[NOCTURNE] role runtime unavailable",room.code,typeof room.sim.roleAction,room.sim.phase,"simSinglePlayer="+String(room.sim.singlePlayer));return socket.emit("roleActionResult",{ok:false,action,message:"The multiplayer role controller is not available in this server process."});}
     const actor=room.sim.get(socket.id);
     console.log("[NOCTURNE] role actor gate",room.code,actor?.name||"UNKNOWN",actor?.role||"NO_ROLE",actor?.investigatorRole||"",room.sim.phase,action);
     if(!actor)return fail(socket,"Your player character could not be found in this case.");
@@ -79,4 +83,4 @@ io.on("connection",socket=>{
   socket.on("chat",payload=>{const room=findRoom(socket);if(room)room.chat(socket.id,clean(payload?.text,800));});
   socket.on("disconnect",()=>{console.log("[NOCTURNE] socket disconnected",socket.id);const room=findRoom(socket);if(!room)return;room.remove(socket.id);if(room.players.size===0)rooms.delete(room.code);});
 });
-server.listen(PORT,()=>console.log(`NOCTURNE 4.2.2 online server listening on port ${PORT}`));
+server.listen(PORT,()=>console.log(`NOCTURNE 4.2.3 online server listening on port ${PORT}`));
