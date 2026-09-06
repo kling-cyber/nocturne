@@ -79,7 +79,8 @@
     window.__nocturneRoleDiagnostics=()=>({installed:true,connected:!!socket()?.connected,role:me?.role||null,render:typeof window.render});
 
     const s=socket();
-    s.on('stateUpdate',()=>finish());
+    s.on('stateUpdate',()=>{finish();setTimeout(()=>renderRolePanel(),0);});
+    s.on('privateState',()=>{setTimeout(()=>renderRolePanel(),0);});
     s.on('errorMessage',message=>finish(message));
     s.on('disconnect',()=>finish('Connection to the case server was lost.'));
     s.on('roleActionResult',result=>{console.log('[NOCTURNE] ROLE RESULT',result);finish(result?.ok?'Role ability resolved.':(result?.message||'Role ability failed.'));if(result?.ok)showOutput(result);});
