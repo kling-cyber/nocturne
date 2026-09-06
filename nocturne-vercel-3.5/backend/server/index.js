@@ -7,7 +7,41 @@ const {Server}=require("socket.io");
 const {GameRoom}=require("./game");
 const visualBatch=require("./visual-batch");
 const roleSystem=require("./role-system");
-roleSystem.installRoomStart(GameRoom);
+
+// Install role authority as soon as GameRoom creates its Sim, before the
+// room can emit the initial private player state. This prevents the client
+// from seeing a generic Investigator role and prevents roleAction from being
+// missing when the first ability button is clicked.
+if(!GameRoom.prototype.__nocturneRoleBootstrapPatched){
+  GameRoom.prototype.__nocturneRoleBootstrapPatched=true;
+  const originalStart=GameRoom.prototype.start;
+  GameRoom.prototype.start=async function(...args){
+    let current=this.sim;
+    const hadOwn=Object.prototype.hasOwnProperty.call(this,"sim");
+    const previousDescriptor=Object.getOwnPropertyDescriptor(this,"sim");
+    Object.defineProperty(this,"sim",{
+      configurable:true,
+      enumerable:previousDescriptor?.enumerable??true,
+      get(){return current;},
+      set(value){
+        current=value;
+        if(value&&!value.singlePlayer&&!value.__nocturneRolesInstalled){
+          const originalEmit=value.emit;
+          value.emit=()=>{};
+          try{roleSystem.install(this);}finally{value.emit=originalEmit;}
+        }
+      }
+    });
+    try{
+      return await originalStart.apply(this,args);
+    }finally{
+      const finalSim=current;
+      delete this.sim;
+      if(hadOwn&&previousDescriptor){Object.defineProperty(this,"sim",{...previousDescriptor,value:finalSim});}
+      else Object.defineProperty(this,"sim",{configurable:true,enumerable:true,writable:true,value:finalSim});
+    }
+  };
+}
 
 const app=express();
 const server=http.createServer(app);
