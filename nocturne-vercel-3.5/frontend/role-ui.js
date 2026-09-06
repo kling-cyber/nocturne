@@ -3,7 +3,26 @@
     if(window.__nocturneRoleUIInstalled||typeof window.render!=='function')return;
     window.__nocturneRoleUIInstalled=true;
     const baseRender=window.render,basePrivate=window.renderPrivate;
-    const roleAction=action=>{if(typeof setBusy==='function')setBusy(true,'Resolving role ability…');sock.emit('roleAction',{action});};
+    let roleTimer=null;
+    const finishRoleAction=(message)=>{
+      if(roleTimer){clearTimeout(roleTimer);roleTimer=null;}
+      if(typeof setBusy==='function')setBusy(false);
+      if(message&&typeof toast==='function')toast(message);
+    };
+    const roleAction=action=>{
+      if(typeof setBusy==='function')setBusy(true,'Resolving role ability…');
+      if(typeof sock==='undefined'||!sock||!sock.connected){
+        finishRoleAction('The case connection is not available.');
+        return;
+      }
+      console.log('[NOCTURNE] roleAction →',action);
+      sock.emit('roleAction',{action});
+      roleTimer=setTimeout(()=>{
+        roleTimer=null;
+        if(typeof setBusy==='function')setBusy(false);
+        if(typeof toast==='function')toast('The role ability did not receive a server response. Please try again.');
+      },8000);
+    };
     window.nocturneRoleAction=roleAction;
     window.nocturneNamedRoleAction=kind=>{const name=prompt(kind+' · enter the exact character name:');if(name)roleAction(kind+' '+name.trim());};
     window.nocturneKillerAction=()=>{const name=prompt('ELIMINATE · enter the exact living target name:');if(name)roleAction('KILL '+name.trim());};
@@ -21,6 +40,10 @@
     window.render=function(){baseRender();renderRolePanel();};
     window.renderPrivate=function(){basePrivate();const killerControl=$('killerControl');if(killerControl)killerControl.innerHTML='';};
     if(typeof S!=='undefined'&&S)window.render();
+    sock.on('stateUpdate',()=>finishRoleAction());
+    sock.on('errorMessage',message=>finishRoleAction(message));
+    sock.on('disconnect',()=>finishRoleAction('Connection to the case server was lost.'));
+    sock.on('roleActionResult',result=>finishRoleAction(result?.ok?'Role ability resolved.':'The role ability failed.'));
   }
   if(document.readyState==='complete')install();else window.addEventListener('load',install,{once:true});
 })();
