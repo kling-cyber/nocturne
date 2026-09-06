@@ -10,4 +10,8 @@ window.addEventListener("load",()=>{
   const evidence=document.createElement("script");
   evidence.src="/evidence-ui.js?v=4.1.0";
   document.head.appendChild(evidence);
+  const layout=document.createElement("link");
+  layout.rel="stylesheet";
+  layout.href="/evidence-layout.css?v=4.1.1";
+  document.head.appendChild(layout);
 },{once:true});
