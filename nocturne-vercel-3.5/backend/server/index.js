@@ -75,12 +75,12 @@ io.on("connection",socket=>{
       if(result.ok){
         const newEvidence=room.sim.evidence.slice(beforeEvidence);
         const newEvents=room.sim.events.slice(beforeEvents);
-        socket.emit("roleActionResult",{...result,action,evidenceCreated:newEvidence.length>0,eventCreated:newEvents.length>0,evidence:newEvidence.slice(-3),events:newEvents.slice(-3)});
         if(newEvidence.length===0&&newEvents.length===0){
           room.sim.add({type:"role-action",title:result.title||"Role ability completed",description:result.description||`${actor.name} completed ${action}.`,reliability:70,source:actor.name,visibility:"public"});
           room.sim.event("ROLE",`${actor.name} used ${action}.`);
         }
         if(typeof room.sim.emit==="function")room.sim.emit();
+        socket.emit("roleActionResult",{...result,action,evidenceCreated:room.sim.evidence.length>beforeEvidence,eventCreated:room.sim.events.length>beforeEvents,evidence:room.sim.evidence.slice(beforeEvidence).slice(-3),events:room.sim.events.slice(beforeEvents).slice(-3)});
         console.log("[NOCTURNE] roleAction success",room.code,actor.name,action,"evidence",room.sim.evidence.length-beforeEvidence,"events",room.sim.events.length-beforeEvents);
       }else{
         socket.emit("roleActionResult",{...result,ok:false,action});
