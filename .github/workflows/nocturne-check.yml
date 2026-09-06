@@ -19,8 +19,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: nocturne-vercel-3.5/backend/package.json
       - name: Install dependencies
         run: npm install --ignore-scripts
       - name: Syntax check
