@@ -2,19 +2,23 @@
 
 ## Role assignment
 
-Multiplayer supports 2–8 human players.
+Multiplayer supports **2–8 human players**. Single Player remains the separate mode for solo play.
 
+- Multiplayer cannot start until at least 2 human players are in the room.
 - Exactly one human is the Killer.
 - If a second human is present, that player becomes the Detective.
 - Every additional human becomes an Investigator with a distinct specialty.
 - If there is no human Investigator, an NPC is promoted to the Investigator role.
+- If a core role is missing because there are not enough human players, an NPC fills that role.
 - The rest of the cast remains autonomous NPCs.
+- NPC role labels fill the missing cast slots, while the existing NPC AI continues to control NPC behavior.
 - The server is authoritative. The frontend cannot grant a role ability.
 
 ### Example player counts
 
 | Humans | Human roles | NPC fallback |
 |---:|---|---|
+| 1 | Not allowed in Multiplayer | Use Single Player |
 | 2 | Killer + Detective | NPC Investigator |
 | 3 | Killer + Detective + Investigator | None required |
 | 4–8 | Killer + Detective + Investigators | Remaining cast are NPCs |
@@ -65,4 +69,4 @@ The difference is that role-specific abilities are separate and server-authorize
 
 ## Single player
 
-This role system applies to Multiplayer. Single Player continues to use its existing investigator-specialty selection and autonomous AI Killer architecture.
+Single Player continues to use its existing investigator-specialty selection and autonomous AI Killer architecture. It is the intended mode when only one human player is available.
