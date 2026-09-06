@@ -5,7 +5,11 @@ const SPECIALTIES=['Forensic Analyst','Behavioral Analyst','Digital Investigator
 const clean=(s,n=300)=>String(s??'').replace(/[\u0000-\u001F\u007F]/g,'').trim().slice(0,n);
 function notice(room,pid,text){room.io.to(pid).emit('errorMessage',text);}
 function install(room){
- const sim=room?.sim;if(!sim||sim.singlePlayer||sim.__nocturneRolesInstalled)return;sim.__nocturneRolesInstalled=true;
+ const sim=room?.sim;if(!sim||sim.singlePlayer)return;
+ // A previous partial install can leave the marker behind without the action
+ // handler. Only short-circuit when the actual authoritative handler exists.
+ if(sim.__nocturneRolesInstalled&&typeof sim.roleAction==='function')return;
+ sim.__nocturneRolesInstalled=true;
  const humans=sim.people.filter(p=>p.isPlayer),killer=sim.get(sim.truth.killerId);if(!killer)return;
  for(const p of humans){p.role=p.id===killer.id?CORE.killer:CORE.investigator;p.investigatorRole=null;}
  const detective=humans.find(p=>p.id!==killer.id);if(detective){detective.role=CORE.detective;detective.investigatorRole='Lead Detective';}
@@ -14,7 +18,8 @@ function install(room){
  if(!sim.people.some(p=>p.role===CORE.detective)&&npcs[ni]){npcs[ni].role=CORE.detective;npcs[ni].investigatorRole='Lead Detective';npcs[ni].aiRole=true;ni++;}
  if(!sim.people.some(p=>p.role===CORE.investigator)&&npcs[ni]){npcs[ni].role=CORE.investigator;npcs[ni].investigatorRole='Field Investigator';npcs[ni].aiRole=true;ni++;}
  for(;ni<npcs.length;ni++){npcs[ni].role=CORE.npc;npcs[ni].investigatorRole=null;npcs[ni].aiRole=true;}
- const originalPrivate=sim.private.bind(sim);sim.private=function(pid){const out=originalPrivate(pid)||{},p=sim.get(pid);const abilities=p?.role===CORE.killer?['ELIMINATE','CONCEAL SCENE']:p?.role===CORE.detective?['ANALYZE CASE','INTERROGATE','MARK SUSPECT']:p?.role===CORE.investigator?['FORENSICS','TRACK','RECON']:[];return {...out,role:p?.role||out.role||CORE.npc,investigatorRole:p?.investigatorRole||out.investigatorRole||null,abilities};};
+ if(typeof sim.__nocturneOriginalPrivate!=='function')sim.__nocturneOriginalPrivate=sim.private.bind(sim);
+ const originalPrivate=sim.__nocturneOriginalPrivate;sim.private=function(pid){const out=originalPrivate(pid)||{},p=sim.get(pid),abilities=p?.role===CORE.killer?['ELIMINATE','CONCEAL SCENE']:p?.role===CORE.detective?['ANALYZE CASE','INTERROGATE','MARK SUSPECT']:p?.role===CORE.investigator?['FORENSICS','TRACK','RECON']:[];return {...out,role:p?.role||out.role||CORE.npc,investigatorRole:p?.investigatorRole||out.investigatorRole||null,abilities};};
  sim.roleAction=function(pid,raw){
   const p=sim.get(pid);if(!p||!p.alive||sim.caseClosed)return;const text=clean(raw),lower=text.toLowerCase();
   if(p.role===CORE.killer){
