@@ -1,6 +1,5 @@
 // NOCTURNE multiplayer role authority.
-// AI decides the investigative outcome from the live case context.
-// The server remains authoritative for hidden truth and game-state changes.
+// Every role action gets an immediate server-authoritative result; AI may refine it asynchronously.
 const CORE={killer:'KILLER',detective:'DETECTIVE',investigator:'INVESTIGATOR',npc:'NPC'};
 const SPECIALTIES=['Forensic Analyst','Behavioral Analyst','Digital Investigator','Field Investigator','Investigative Journalist','Security Specialist','Medical Consultant'];
 const clean=(s,n=300)=>String(s??'').replace(/[\u0000-\u001F\u007F]/g,'').trim().slice(0,n);
@@ -9,11 +8,21 @@ const AI_TIMEOUT=Math.max(2000,Math.min(5000,Number(process.env.NOCTURNE_ROLE_AI
 
 function notice(room,pid,text){room.io.to(pid).emit('errorMessage',text);return {ok:false,message:text};}
 function shuffle(list){const a=[...list];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-function output(room,pid,sim,p,result,extra={}){
-  const title=clean(result?.title||'Role ability resolved.',140),description=clean(result?.description||'The role ability completed successfully.',900),action=clean(result?.action||'',120),reliability=Math.max(35,Math.min(95,Number(result?.reliability)||72));
-  const out={ok:true,roleAction:true,title,description,action,reliability,...extra};
-  sim.add({type:'role',title,description,reliability,source:p?.name||'ROLE ACTION'});
+
+function record(sim,p,result,source='ROLE ACTION'){
+  const title=clean(result?.title||'Role ability resolved.',140);
+  const description=clean(result?.description||'The role ability completed successfully.',900);
+  const reliability=Math.max(35,Math.min(95,Number(result?.reliability)||72));
+  sim.add({type:'role',title,description,reliability,source:p?.name||source});
   sim.event('ROLE ACTION',`${p?.name||'An investigator'} completed a specialized role action: ${title}`);
+  return {title,description,reliability};
+}
+function emitResult(room,pid,sim,p,result,extra={}){
+  const r=record(sim,p,result);
+  const out={ok:true,roleAction:true,action:clean(result?.action||'',120),...r,...extra};
+  room.io.to(pid).emit('roleActionOutput',out);
+  room.io.to(pid).emit('roleActionResult',out);
+  if(typeof sim.emit==='function')sim.emit();
   return out;
 }
 function context(sim,p){
@@ -44,17 +53,45 @@ async function aiResolve(sim,p,action,allowedEffect){
     return {outcome:clean(x.outcome,30),title:clean(x.title,140),description:clean(x.description,900),reliability:Number(x.reliability)||65,evidence:x.evidence,suspicionDelta:Number(x.suspicionDelta)||0};
   }catch(error){console.error('[NOCTURNE] Role AI error:',error?.name||'',error?.message||error);return null;}finally{clearTimeout(timer);}
 }
-async function resolve(room,pid,sim,p,text,opts={}){
-  const aiResult=await aiResolve(sim,p,text,opts.allowedEffect||'Create only bounded, non-graphic investigative consequences.');
-  const result=aiResult||{outcome:'NO_FINDING',title:'Role action completed',description:`${p.name} applied ${p.role.toLowerCase()} expertise to the current situation, but no reliable new conclusion was established.`,reliability:55,evidence:null,suspicionDelta:0};
-  if(result.evidence)sim.add({type:clean(result.evidence.type,40)||'observation',title:clean(result.evidence.title,120),description:clean(result.evidence.description,500),reliability:Math.max(20,Math.min(95,Number(result.evidence.reliability)||60)),source:p.name});
-  if(opts.target&&result.suspicionDelta)opts.target.suspicion=Math.max(0,Math.min(100,Number(opts.target.suspicion||0)+Math.max(-15,Math.min(20,result.suspicionDelta))));
-  return output(room,pid,sim,p,{...result,action:text},{aiUsed:!!aiResult,outcome:result.outcome});
+
+function baseline(sim,p,action){
+  const recent=sim.evidence.slice(-3).map(e=>e.title).filter(Boolean);
+  const specialty=p.investigatorRole&&p.investigatorRole!=='Lead Detective'?` using ${p.investigatorRole.toLowerCase()}`:'';
+  if(p.role===CORE.detective){
+    if(action.toLowerCase()==='analyze case')return {outcome:'SUCCESS',title:'Case cross-reference completed',description:`${p.name} cross-referenced the latest public evidence and timeline${specialty}. ${recent.length?`The review focused on ${recent.join(', ')}.`:'No prior evidence was strong enough to establish a conclusion yet.'}`,reliability:62};
+    if(action.toLowerCase().startsWith('interrogate '))return {outcome:'SUCCESS',title:'Interrogation initiated',description:`${p.name} formally opened an interview with ${action.slice(12).trim()}. Their account is now a live lead that can be compared against movement, timing and other testimony.`,reliability:60};
+    if(action.toLowerCase().startsWith('mark suspect '))return {outcome:'PARTIAL',title:'Person marked for review',description:`${p.name} marked ${action.slice(13).trim()} as a person of interest. The mark records investigative suspicion, not guilt, and should be tested against independent evidence.`,reliability:58};
+  }
+  if(p.role===CORE.investigator){
+    if(action.toLowerCase()==='forensics')return {outcome:'SUCCESS',title:'Focused forensic sweep completed',description:`${p.name} performed a focused forensic sweep of ${p.location}${specialty}. Physical traces, object placement and environmental inconsistencies were checked against the current case timeline.`,reliability:60};
+    if(action.toLowerCase()==='recon')return {outcome:'SUCCESS',title:'Reconnaissance completed',description:`${p.name} surveyed ${p.location}${specialty}, checking nearby people, movement and environmental details for something worth cross-referencing with the case timeline.`,reliability:60};
+    if(action.toLowerCase().startsWith('track '))return {outcome:'SUCCESS',title:'Movement trail followed',description:`${p.name} followed the movement trail of ${action.slice(6).trim()} to the current location. The observation is useful as a lead, but presence alone does not establish intent.`,reliability:64};
+  }
+  if(p.role===CORE.killer&&action.toLowerCase().startsWith('kill '))return {outcome:'SUCCESS',title:'Critical action completed',description:`${p.name} completed the selected critical-window action. The resulting scene and traces are now part of the case state.`,reliability:72};
+  if(p.role===CORE.killer&&action.toLowerCase()==='conceal scene')return {outcome:'PARTIAL',title:'Scene disturbance completed',description:`${p.name} disturbed the scene after the crime. Any changes may introduce ambiguity while leaving traces of the disturbance.`,reliability:62};
+  return {outcome:'SUCCESS',title:'Role action completed',description:`${p.name} applied ${p.role.toLowerCase()} expertise to the current case and created a new investigative lead.`,reliability:58};
 }
+
+async function resolve(room,pid,sim,p,text,opts={}){
+  // Immediate result guarantees every role button has a visible gameplay effect.
+  const base=baseline(sim,p,text);
+  const immediate=emitResult(room,pid,sim,p,{...base,action:text},{aiUsed:false,provisional:true,outcome:base.outcome});
+  Promise.resolve().then(async()=>{
+    const aiResult=await aiResolve(sim,p,text,opts.allowedEffect||'Create only bounded, non-graphic investigative consequences.');
+    if(!aiResult)return;
+    if(aiResult.evidence){sim.add({type:clean(aiResult.evidence.type,40)||'observation',title:clean(aiResult.evidence.title,120),description:clean(aiResult.evidence.description,500),reliability:Math.max(20,Math.min(95,Number(aiResult.evidence.reliability)||60)),source:p.name});}
+    if(opts.target&&aiResult.suspicionDelta)opts.target.suspicion=Math.max(0,Math.min(100,Number(opts.target.suspicion||0)+Math.max(-15,Math.min(20,aiResult.suspicionDelta))));
+    const refined=emitResult(room,pid,sim,p,{...aiResult,action:text},{aiUsed:true,provisional:false,outcome:aiResult.outcome,refines:immediate.title});
+    console.log('[NOCTURNE] Role action AI refinement sent',room.code,p.name,text,refined.outcome);
+  }).catch(error=>console.error('[NOCTURNE] Role refinement error:',error?.message||error));
+  return immediate;
+}
+
 function install(room){
   const sim=room?.sim;if(!sim||sim.singlePlayer)return;if(sim.__nocturneRolesInstalled&&typeof sim.roleAction==='function')return;
   const humans=sim.people.filter(p=>p.isPlayer),killer=sim.get(sim.truth.killerId);if(!killer){sim.__nocturneRolesInstalled=false;return;}
-  const nonKillers=shuffle(humans.filter(p=>p.id!==killer.id));for(const p of humans){p.role=p.id===killer.id?CORE.killer:CORE.investigator;p.investigatorRole=null;}
+  const nonKillers=shuffle(humans.filter(p=>p.id!==killer.id));
+  for(const p of humans){p.role=p.id===killer.id?CORE.killer:CORE.investigator;p.investigatorRole=null;}
   const detective=nonKillers.shift();if(detective){detective.role=CORE.detective;detective.investigatorRole='Lead Detective';}
   const specialties=shuffle(SPECIALTIES);nonKillers.forEach((p,i)=>{p.role=CORE.investigator;p.investigatorRole=specialties[i%specialties.length];});
   const npcs=shuffle(sim.people.filter(p=>!p.isPlayer&&p.alive));let ni=0;
@@ -70,26 +107,41 @@ function install(room){
     sim.__nocturneRoleLocks.add(pid);
     try{
       const text=clean(raw),lower=text.toLowerCase();
+      console.log('[NOCTURNE] role actor',room.code,p.name,p.role,p.investigatorRole||'',sim.phase,text);
       if(p.role===CORE.killer){
         if(lower==='eliminate'||lower==='kill')return notice(room,pid,'Choose ELIMINATE and select a living target.');
-        if(sim.phase!=='CRIME')return notice(room,pid,'KILLER abilities are only available during the critical window.');
         if(lower.startsWith('kill ')){
+          if(sim.phase!=='CRIME')return notice(room,pid,'KILLER abilities are only available during the critical window.');
           const targetName=text.slice(5).trim().toLowerCase(),target=sim.people.find(x=>x.alive&&x.id!==p.id&&x.name.toLowerCase()===targetName);if(!target)return notice(room,pid,'Choose a living target by exact name.');
           sim.truth.victimId=target.id;sim.remember(p,'episodic',`I selected ${target.name} as my target during the critical window.`,{confidence:100,importance:100,source:'self'});sim.crime();
           return resolve(room,pid,sim,p,text,{allowedEffect:'Resolve the chosen target action. The server has already applied the authoritative crime state. Describe plausible consequences, witnesses, traces and uncertainty, but never reveal hidden truth.'});
         }
-        if(lower==='conceal scene'){if(!sim.truth.crimeCommitted)return notice(room,pid,'There is no crime scene to conceal yet.');sim.tick(1);return resolve(room,pid,sim,p,text,{allowedEffect:'Assess how the concealment attempt changes the scene. It may leave traces, create ambiguity, accomplish little, or make an existing clue harder to interpret. Never erase authoritative truth.'});}
+        if(lower==='conceal scene'){
+          if(!sim.truth.crimeCommitted)return notice(room,pid,'There is no crime scene to conceal yet.');
+          sim.tick(1);return resolve(room,pid,sim,p,text,{allowedEffect:'Assess how the concealment attempt changes the scene. It may leave traces, create ambiguity, accomplish little, or make an existing clue harder to interpret. Never erase authoritative truth.'});
+        }
         return notice(room,pid,'Killer abilities: ELIMINATE during the critical window, CONCEAL SCENE after the crime.');
       }
       if(p.role===CORE.detective){
         if(lower==='analyze case')return resolve(room,pid,sim,p,text,{allowedEffect:'Analyze recent public evidence and timeline. Produce a reasoned lead, contradiction, pattern, or no useful finding. Do not reveal hidden truth.'});
-        if(lower.startsWith('interrogate ')){const name=text.slice(12).trim().toLowerCase(),target=sim.people.find(x=>x.alive&&x.id!==p.id&&x.name.toLowerCase()===name);if(!target)return notice(room,pid,'Choose a living person by exact name.');sim.ask(pid,target.id,'Formal interrogation: account for your movements and what you personally remember during the critical period.');return resolve(room,pid,sim,p,text,{allowedEffect:'Resolve the interrogation opening from the current case. The target may later answer, hesitate, contradict themselves, or provide a useful detail. Do not impersonate the target.'});}
-        if(lower.startsWith('mark suspect ')){const name=text.slice(13).trim().toLowerCase(),target=sim.people.find(x=>x.alive&&x.name.toLowerCase()===name);if(!target)return notice(room,pid,'Choose a living person by exact name.');return resolve(room,pid,sim,p,text,{target,allowedEffect:'Assess whether current public evidence supports marking this person for review. Suspicion may rise, fall, or remain unchanged. Never treat suspicion as guilt.'});}
+        if(lower.startsWith('interrogate ')){
+          const name=text.slice(12).trim().toLowerCase(),target=sim.people.find(x=>x.alive&&x.id!==p.id&&x.name.toLowerCase()===name);if(!target)return notice(room,pid,'Choose a living person by exact name.');
+          sim.ask(pid,target.id,'Formal interrogation: account for your movements and what you personally remember during the critical period.');
+          return resolve(room,pid,sim,p,text,{allowedEffect:'Resolve the interrogation opening from the current case. The target may later answer, hesitate, contradict themselves, or provide a useful detail. Do not impersonate the target.'});
+        }
+        if(lower.startsWith('mark suspect ')){
+          const name=text.slice(13).trim().toLowerCase(),target=sim.people.find(x=>x.alive&&x.name.toLowerCase()===name);if(!target)return notice(room,pid,'Choose a living person by exact name.');
+          return resolve(room,pid,sim,p,text,{target,allowedEffect:'Assess whether current public evidence supports marking this person for review. Suspicion may rise, fall, or remain unchanged. Never treat suspicion as guilt.'});
+        }
         return notice(room,pid,'Detective abilities: ANALYZE CASE, INTERROGATE, MARK SUSPECT.');
       }
       if(p.role===CORE.investigator){
         if(lower==='forensics')return resolve(room,pid,sim,p,text,{allowedEffect:'Use the investigator specialty and current location to produce a plausible forensic, behavioral, digital, field, security, medical, journalism, or environmental lead. It may find something useful, mundane, or inconclusive.'});
-        if(lower.startsWith('track ')){const name=text.slice(6).trim().toLowerCase(),target=sim.people.find(x=>x.alive&&x.id!==p.id&&x.name.toLowerCase()===name);if(!target)return notice(room,pid,'Choose a living person by exact name.');const old=p.location;p.location=target.location;sim.remember(p,'observation',`I tracked ${target.name} to ${target.location}.`,{confidence:70,importance:65,source:'self'});return resolve(room,pid,sim,p,text,{allowedEffect:`Assess the movement trail from ${old} toward ${target.location}. It may produce a reliable lead, ambiguity, or an innocent explanation.`});}
+        if(lower.startsWith('track ')){
+          const name=text.slice(6).trim().toLowerCase(),target=sim.people.find(x=>x.alive&&x.id!==p.id&&x.name.toLowerCase()===name);if(!target)return notice(room,pid,'Choose a living person by exact name.');
+          const old=p.location;p.location=target.location;sim.remember(p,'observation',`I tracked ${target.name} to ${target.location}.`,{confidence:70,importance:65,source:'self'});
+          return resolve(room,pid,sim,p,text,{allowedEffect:`Assess the movement trail from ${old} toward ${target.location}. It may produce a reliable lead, ambiguity, or an innocent explanation.`});
+        }
         if(lower==='recon')return resolve(room,pid,sim,p,text,{allowedEffect:'Survey the current location using nearby people, recent events, evidence and the investigator specialty. Return useful activity, a mundane observation, an inconsistency, or no actionable finding.'});
         return notice(room,pid,'Investigator abilities: FORENSICS, TRACK, RECON.');
       }
