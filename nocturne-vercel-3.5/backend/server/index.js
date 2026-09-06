@@ -67,7 +67,7 @@ io.on("connection",socket=>{
       const beforeEvidence=room.sim.evidence.length;
       const beforeEvents=room.sim.events.length;
       const result=room.sim.roleAction(socket.id,action);
-      if(!result||typeof result!="object"){
+      if(!result||typeof result!=="object"){
         console.error("[NOCTURNE] roleAction returned no result",room.code,actor.name,action);
         socket.emit("roleActionResult",{ok:false,action,message:"The role ability did not return a result from the case engine."});
         return;
@@ -80,7 +80,12 @@ io.on("connection",socket=>{
           room.sim.event("ROLE",`${actor.name} used ${action}.`);
         }
         if(typeof room.sim.emit==="function")room.sim.emit();
-        socket.emit("roleActionResult",{...result,action,evidenceCreated:room.sim.evidence.length>beforeEvidence,eventCreated:room.sim.events.length>beforeEvents,evidence:room.sim.evidence.slice(beforeEvidence).slice(-3),events:room.sim.events.slice(beforeEvents).slice(-3)});
+        const finalResult={...result,action,evidenceCreated:room.sim.evidence.length>beforeEvidence,eventCreated:room.sim.events.length>beforeEvents,evidence:room.sim.evidence.slice(beforeEvidence).slice(-3),events:room.sim.events.slice(beforeEvents).slice(-3)};
+        setImmediate(()=>{
+          if(!socket.connected)return;
+          socket.emit("roleActionOutput",finalResult);
+          socket.emit("roleActionResult",finalResult);
+        });
         console.log("[NOCTURNE] roleAction success",room.code,actor.name,action,"evidence",room.sim.evidence.length-beforeEvidence,"events",room.sim.events.length-beforeEvents);
       }else{
         socket.emit("roleActionResult",{...result,ok:false,action});
