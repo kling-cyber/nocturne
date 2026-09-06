@@ -97,9 +97,7 @@ function register(sim){entry(sim);wrapEvidence(sim);}
 function touch(sim){entry(sim).lastActive=Date.now();}
 
 async function directRequest(sim,pid,payload={}){
-  const e=entry(sim);wrapEvidence(sim);e.lastActive=Date.now();sim.visualCooldowns=sim.visualCooldowns||new Map();
-  const remaining=30000-(Date.now()-Number(sim.visualCooldowns.get(pid)||0));
-  if(remaining>0)return {error:`Visual request cooldown: ${Math.ceil(remaining/1000)}s remaining.`};
+  const e=entry(sim);wrapEvidence(sim);e.lastActive=Date.now();
   if(!comfy.configured)return {error:'Local visual engine is not configured.'};
   const type=payload.type==='photo'?'photo':'cctv';
   const captureTick=Math.max(0,Number(sim.t||0));
@@ -113,7 +111,7 @@ async function directRequest(sim,pid,payload={}){
   if(!job)return {error:'No visual source is available for this case.'};
   const lock=`${job.kind}:${job.cameraId}`;
   if(e.generating.has(lock))return {error:'A visual from this source is already being generated.'};
-  e.generating.add(lock);sim.visualCooldowns.set(pid,Date.now());
+  e.generating.add(lock);
   try{
     console.log(`[NOCTURNE] Direct local visual generation: ${job.kind} ${job.cameraId} ${WIDTH}x${HEIGHT} steps=${STEPS} timeout=${GENERATION_TIMEOUT_MS}ms capture=${job.clock||clockAt(job.capture)}`);
     const result=await comfy.request({prompt:job.prompt,negativePrompt:job.negative,caseSeed:sim.seed,cameraId:job.cameraId,type:job.kind,capture:job.capture});
