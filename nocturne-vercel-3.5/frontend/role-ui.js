@@ -1,6 +1,9 @@
 (function(){
   function install(){
-    if(window.__nocturneRoleUIInstalled||typeof window.render!=='function')return;
+    if(window.__nocturneRoleUIInstalled)return true;
+    if(typeof window.render!=='function')return false;
+    if(typeof window.$!=='function'&&typeof $!=='function')return false;
+
     window.__nocturneRoleUIInstalled=true;
     const baseRender=window.render,basePrivate=window.renderPrivate;
     let roleTimer=null;
@@ -18,57 +21,34 @@
       box.classList.add('active');
     };
 
-    /*
-      Keep a local display bridge for role results.
-      The authoritative server state is still preferred, but this makes
-      successful role actions visible immediately even if a state packet
-      arrives late or is lost during a reconnect.
-    */
     const mirrorRoleResult=(result)=>{
       if(!result||!result.ok||typeof S==='undefined'||!S)return;
       S.evidence=Array.isArray(S.evidence)?S.evidence:[];
       S.events=Array.isArray(S.events)?S.events:[];
-
       const title=String(result.title||'Role ability resolved.');
       const description=String(result.description||'Role ability completed successfully.');
       const source=String(me?.name||'ROLE');
       const now=String(S.clock||'--:--');
-
       if(!S.evidence.some(e=>e.title===title&&e.source===source)){
-        S.evidence.push({
-          id:'role-'+Date.now()+'-'+Math.random().toString(36).slice(2),
-          createdAt:now,
-          reliability:70,
-          visibility:'public',
-          type:'role-action',
-          title,
-          description,
-          source
-        });
+        S.evidence.push({id:'role-'+Date.now()+'-'+Math.random().toString(36).slice(2),createdAt:now,reliability:70,visibility:'public',type:'role-action',title,description,source});
       }
-
       const eventText=`${source} · ${title}: ${description}`;
       if(!S.events.some(e=>e.text===eventText)){
-        S.events.push({
-          id:'role-event-'+Date.now()+'-'+Math.random().toString(36).slice(2),
-          time:now,
-          type:'ROLE',
-          text:eventText,
-          privateTo:null
-        });
+        S.events.push({id:'role-event-'+Date.now()+'-'+Math.random().toString(36).slice(2),time:now,type:'ROLE',text:eventText,privateTo:null});
       }
-
       try{baseRender();renderRolePanel();}catch(error){console.error('[NOCTURNE] Role display bridge error:',error);}
     };
 
     const roleAction=action=>{
+      const text=String(action||'').trim();
+      if(!text)return;
       if(typeof setBusy==='function')setBusy(true,'Resolving role ability…');
       if(typeof sock==='undefined'||!sock||!sock.connected){
         finishRoleAction('The case connection is not available.');
         return;
       }
-      console.log('[NOCTURNE] roleAction →',action);
-      sock.emit('roleAction',{action});
+      console.log('[NOCTURNE] roleAction →',text);
+      sock.emit('roleAction',{action:text});
       roleTimer=setTimeout(()=>{
         roleTimer=null;
         if(typeof setBusy==='function')setBusy(false);
@@ -82,7 +62,7 @@
 
     function renderRolePanel(){
       const box=$('act');if(!box||!me)return;
-      const role=me.role||'INVESTIGATOR',free=$('free')?.value||'';
+      const role=String(me.role||'').toUpperCase()||'INVESTIGATOR',free=$('free')?.value||'';
       const common=`<div class="rolePanel commonPanel"><h3>COMMON ACTIONS</h3><div class="action-grid"><div class="card" onclick="prefill('Talk to someone nearby')"><b>Talk</b><p>Talk to someone nearby</p></div><div class="card" onclick="prefill('Move somewhere')"><b>Move</b><p>Move somewhere</p></div><div class="card" onclick="prefill('Search the current area')"><b>Search</b><p>Search the current area</p></div><div class="card" onclick="prefill('Follow a person')"><b>Follow</b><p>Follow a person</p></div><div class="card" onclick="prefill('Wait and observe')"><b>Observe</b><p>Wait and observe</p></div><div class="card" onclick="prefill('Review what I know')"><b>Recall</b><p>Review what I know</p></div></div></div>`;
       let special='';
       if(role==='KILLER')special=`<div class="rolePanel killerPanel"><h3>KILLER ABILITIES</h3><div class="action-grid"><div class="card danger" onclick="nocturneKillerAction()"><b>ELIMINATE</b><p>Choose a living target during the critical window.</p></div><div class="card danger" onclick="nocturneRoleAction('CONCEAL SCENE')"><b>CONCEAL SCENE</b><p>Disturb the scene after the crime. This can create evidence.</p></div></div></div>`;
@@ -96,23 +76,33 @@
     window.renderPrivate=function(){basePrivate();const killerControl=$('killerControl');if(killerControl)killerControl.innerHTML='';};
     if(typeof S!=='undefined'&&S)window.render();
 
-    sock.on('stateUpdate',()=>finishRoleAction());
-    sock.on('errorMessage',message=>finishRoleAction(message));
-    sock.on('disconnect',()=>finishRoleAction('Connection to the case server was lost.'));
-
-    sock.on('roleActionResult',result=>{
-      finishRoleAction(result?.ok?'Role ability resolved.':'The role ability failed.');
-      if(result?.ok){
+    if(typeof sock!=='undefined'&&sock){
+      sock.on('stateUpdate',()=>finishRoleAction());
+      sock.on('errorMessage',message=>finishRoleAction(message));
+      sock.on('disconnect',()=>finishRoleAction('Connection to the case server was lost.'));
+      sock.on('roleActionResult',result=>{
+        finishRoleAction(result?.ok?'Role ability resolved.':(result?.message||'The role ability failed.'));
+        if(result?.ok){showRoleOutput(result);mirrorRoleResult(result);}
+      });
+      sock.on('roleActionOutput',result=>{
+        finishRoleAction();
         showRoleOutput(result);
         mirrorRoleResult(result);
-      }
-    });
-
-    sock.on('roleActionOutput',result=>{
-      finishRoleAction();
-      showRoleOutput(result);
-      mirrorRoleResult(result);
-    });
+      });
+    }
+    console.log('[NOCTURNE] Role UI installed.');
+    return true;
   }
-  if(document.readyState==='complete')install();else window.addEventListener('load',install,{once:true});
+
+  function boot(attempt=0){
+    if(window.__nocturneRoleUIInstalled)return;
+    if(install())return;
+    if(attempt<100){
+      setTimeout(()=>boot(attempt+1),100);
+      return;
+    }
+    console.error('[NOCTURNE] Role UI failed to initialize after waiting for app.js.');
+  }
+
+  boot();
 })();
