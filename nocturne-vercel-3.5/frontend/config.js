@@ -2,15 +2,15 @@
 // Example: https://nocturne-api.example.com
 window.NOCTURNE_SERVER_URL = "https://nocturne-8tko.onrender.com";
 
-// Load optional UI layers after app.js is available. This works whether
-// config.js executes before or after the browser load event.
 (function(){
   function loadExtras(){
     if(window.__nocturneExtrasLoaded)return;
     window.__nocturneExtrasLoaded=true;
 
     const role=document.createElement("script");
-    role.src="/role-ui.js?v=4.1.5";
+    role.src="/role-ui.js?v=4.1.6";
+    role.onload=()=>console.log("[NOCTURNE] role-ui.js loaded");
+    role.onerror=()=>console.error("[NOCTURNE] role-ui.js FAILED TO LOAD");
     document.head.appendChild(role);
 
     const evidence=document.createElement("script");
@@ -23,6 +23,9 @@ window.NOCTURNE_SERVER_URL = "https://nocturne-8tko.onrender.com";
     document.head.appendChild(layout);
   }
 
-  if(document.readyState==='complete')loadExtras();
-  else window.addEventListener('load',loadExtras,{once:true});
+  // config.js is parsed before app.js in index.html. A zero-delay task lets
+  // app.js finish first, then loads the role controller without depending on
+  // the window load event.
+  if(document.readyState==='loading')setTimeout(loadExtras,0);
+  else loadExtras();
 })();
