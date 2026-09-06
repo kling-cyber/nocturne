@@ -1,4 +1,5 @@
-/* NOCTURNE direct local ComfyUI visual engine. Images are generated on demand and never stored on disk. */
+/* NOCTURNE direct local ComfyUI visual engine + evidence enrichment.
+   Images are generated on demand and never stored on disk. */
 const crypto=require('crypto');
 const comfy=require('./comfy-client');
 
@@ -11,39 +12,94 @@ const cases=new Map();
 const hash=v=>crypto.createHash('sha256').update(String(v)).digest('hex').slice(0,16);
 const safe=v=>String(v||'').replace(/[^A-Za-z0-9_-]/g,'').slice(0,80)||'asset';
 const clockAt=t=>{const x=19*60+Math.max(0,Number(t)||0);return `${String(Math.floor(x/60)%24).padStart(2,'0')}:${String(x%60).padStart(2,'0')}`;};
+const clean=(v,n=900)=>String(v??'').replace(/[\u0000-\u001F\u007F]/g,'').trim().slice(0,n);
+
+function peopleAt(sim,area){
+  return (sim.people||[]).filter(p=>p.alive&&p.location===area).slice(0,8);
+}
+
+function scenePopulation(sim,area){
+  const present=peopleAt(sim,area);
+  const names=present.map(p=>p.name).join(', ');
+  const jobs=present.map(p=>p.job).filter(Boolean).slice(0,5).join(', ');
+  return {present,names,jobs};
+}
 
 function jobsFor(sim){
   const crimeBase=Number(sim.truth?.crimeStart||20);
   const cams=(sim.cameras||[]);
   const jobs=[];
   for(const cam of cams){
-    for(const capture of [Math.max(0,crimeBase-4),crimeBase+4]){
+    for(const capture of [Math.max(0,crimeBase-4),crimeBase-1,crimeBase+1,crimeBase+4]){
+      const pop=scenePopulation(sim,cam.area);
+      const namedContext=pop.names?`Case personnel currently associated with this area include ${pop.names}. They are background context only; do not make identity visually explicit.`:'No specific case personnel are currently anchored to this area.';
       jobs.push({id:`cctv-${safe(cam.id)}-${capture}`,kind:'cctv',cameraId:cam.id,area:cam.area,capture,
-        prompt:`Raw color CCTV surveillance frame from a fictional ${sim.world[0]}. Fixed ${cam.position||'ceiling-mounted'} security camera, ${cam.view||'fixed surveillance perspective'}, exact area: ${cam.area}. Stable physical camera position, realistic architecture, capture time ${clockAt(capture)}. Realistic low-light surveillance footage, documentary security-camera quality, natural shadows, subtle sensor noise, mild compression, restrained fisheye character. Ordinary plausible scene. People may be present naturally, but never reveal hidden case truth. No gore, corpse, violence, logos or readable text.`,
-        negative:'blurry, low quality, distorted architecture, fantasy, illustration, cinematic poster, watermark, readable text, gore, corpse, violence, changed camera angle'});
+        prompt:`Raw color CCTV surveillance frame from a fictional ${sim.world[0]}. Fixed ${cam.position||'ceiling-mounted'} security camera, ${cam.view||'fixed surveillance perspective'}, exact area: ${cam.area}. Stable physical camera position and believable lens height. Capture time ${clockAt(capture)}. ${namedContext} Make the location feel actively inhabited and naturally populated: include a believable mix of approximately 4 to 9 people where the space permits, such as staff, visitors, technicians, security personnel or guests, with varied clothing, ages and natural body language. People should be doing ordinary location-appropriate things: walking, waiting, talking in pairs, carrying equipment, checking a phone, entering a doorway, working at a desk or passing through the frame. Include realistic foreground, midground and background depth, occlusion, reflections and imperfect surveillance framing. At least one person should be visually clear enough to be useful as a movement/timeline observation, while other people remain incidental background activity. Do not turn the frame into a posed group photo. Realistic low-light surveillance footage, documentary security-camera quality, natural shadows, subtle sensor noise, mild compression, restrained fisheye character, believable exposure variation and slight motion softness. The scene is evidence, not an answer. Never reveal hidden case truth, never visually identify the Killer, victim, motive or exact crime sequence. No gore, corpse, violence, weapons in use, logos or readable text.` ,
+        negative:'empty room, deserted location, posed group portrait, studio photo, cinematic poster, fantasy, illustration, cartoon, duplicate people, extra limbs, malformed hands, distorted faces, distorted architecture, changed camera angle, excessive blur, watermark, readable text, gore, corpse, violence, weapon in use'});
     }
   }
   const clues=['a mundane object subtly out of place','a partially obscured reflection or background detail creating a spatial inconsistency','a small environmental disturbance with several innocent explanations','a door, drawer, chair, curtain or cabinet left in a state that invites timeline questions','a faint environmental trace that only becomes meaningful when compared with another evidence source','a time-sensitive environmental detail such as equipment, lighting or an unattended item','a subtle relationship between two ordinary objects','a partially visible peripheral detail that requires cross-reference'];
-  for(let i=0;i<2;i++){
+  for(let i=0;i<3;i++){
     const area=sim.world[1][Math.abs(parseInt(hash(`${sim.seed}|photo|${i}`),16))%sim.world[1].length];
     const clue=clues[Math.abs(parseInt(hash(`${sim.seed}|clue|${i}`),16))%clues.length];
     jobs.push({id:`photo-${i}-${hash(`${sim.seed}|photo|${i}`)}`,kind:'photo',cameraId:'EVIDENCE-PHOTO',area,capture:crimeBase,
-      prompt:`Detailed investigative scene photograph inside the fictional ${sim.world[0]}, exact area: ${area}. Documentary evidence photography with realistic texture, believable architecture, mundane clutter, natural lighting and careful depth. Include exactly one subtle indirect anomaly: ${clue}. Small, naturally integrated, ambiguous and not centered. Never circle, label, explain or exaggerate it. Do not reveal Killer, motive, victim, weapon or hidden answer. No gore, corpse, violence, logos or readable text. The investigator must compare it with time, movement, testimony or another evidence source.`,
-      negative:'obvious clue, arrows, circles, labels, highlighted object, cinematic poster, fantasy, illustration, gore, corpse, violence, watermark, readable text'});
+      prompt:`Detailed investigative scene photograph inside the fictional ${sim.world[0]}, exact area: ${area}. Documentary evidence photography with realistic texture, believable architecture, mundane clutter, natural lighting, accurate scale and careful depth. The location should feel lived-in rather than staged, with ordinary staff/visitors or environmental traces naturally present where appropriate, but no posed crowd. Include exactly one subtle indirect anomaly: ${clue}. Make the anomaly small, naturally integrated, ambiguous and not centered. The investigator must compare it with time, movement, testimony or another evidence source. Do not circle, label, explain or exaggerate it. Never reveal Killer, motive, victim, weapon or hidden answer. No gore, corpse, violence, logos or readable text.`,
+      negative:'empty sterile room, obvious clue, arrows, circles, labels, highlighted object, staged scene, cinematic poster, fantasy, illustration, gore, corpse, violence, watermark, readable text'});
   }
   return jobs;
 }
 
 function entry(sim){
   const id=safe(sim.seed);
-  if(!cases.has(id))cases.set(id,{id,sim,generating:new Set(),lastActive:Date.now()});
+  if(!cases.has(id))cases.set(id,{id,sim,generating:new Set(),lastActive:Date.now(),evidenceWrapped:false});
   return cases.get(id);
 }
-function register(sim){entry(sim);}
+
+function enrichEvidence(e,sim){
+  if(!e||e.__nocturneEnriched)return e;
+  const type=String(e.type||'observation').toLowerCase();
+  const title=clean(e.title||'Case evidence',140);
+  const original=clean(e.description||'No description recorded.',700);
+  const source=clean(e.source||'unknown source',120);
+  const area=clean(e.area||sim.truth?.scene||'current scene',100);
+  const clock=clean(e.createdAt||sim.clock(),30);
+  const templates={
+    visual:`Source assessment: ${source} at ${clock}. Observation context: ${area}. The frame should be treated as a time-and-location observation rather than proof of intent. Investigators should compare visible movement, occupancy and spatial details against access records and witness accounts. Limitations: surveillance angles, occlusion, lighting and image quality can hide relevant details.`,
+    testimony:`Statement assessment: this is a first-person account from ${source}, recorded at ${clock}. Compare the wording with the speaker's known location, stress level and independent records rather than treating confidence as certainty. Useful details include who was present, sequence of events, timing language and anything the speaker conspicuously avoids. Limitations: memory can be incomplete, selective or self-protective.`,
+    digital:`Record assessment: this entry came from ${source} and is anchored to ${clock}. Digital records can establish that a system, device or access point registered activity, but they do not automatically establish who physically caused that activity. Cross-reference timestamps, locations and human testimony. Limitations: partial logs, shared credentials, clock drift and missing events can create false certainty.`,
+    timeline:`Timeline assessment: this record anchors an estimated sequence around ${clock}. Treat it as one point in a larger chronology and compare it with movement, witness statements, camera observations and system records. The important question is whether independent sources converge on the same interval. Limitations: simulated clocks and human recollection may disagree by several minutes.`,
+    trace:`Forensic assessment: the observed trace is associated with ${area} and was logged at ${clock}. A trace can narrow possibilities without identifying a person by itself. Examine whether the observation is consistent with ordinary activity, the scene layout and other physical or temporal evidence. Limitations: environmental traces may have innocent explanations or may have been altered before documentation.`,
+    behavioral:`Behavioral assessment: the observation concerns a change in conduct, stress or interaction involving ${source}. Behavioral cues are useful for generating questions, not for proving guilt. Compare the behavior with the person's normal pattern, testimony and independent evidence. Limitations: stress can result from fear, grief, embarrassment or unrelated personal pressure.`,
+    environmental:`Scene assessment: this environmental observation concerns ${area} and was logged at ${clock}. The detail is meaningful only when connected to a timeline, movement pattern or second independent source. Record what is physically observable before interpreting why it happened. Limitations: lighting, routine maintenance and ordinary human activity can produce similar signs.`,
+    observation:`Observation assessment: ${source} recorded this detail at ${clock}, associated with ${area}. Separate what was directly observed from what is inferred from it. The strongest use of this evidence is to generate a testable question or corroborate another independent record. Limitations: viewpoint, timing and incomplete context can change interpretation.`,
+    analysis:`Analytical assessment: this is an interpretation of previously collected evidence, recorded at ${clock}. It should remain traceable to the underlying records rather than replacing them. Investigators should challenge assumptions and look for contradictory evidence before relying on the conclusion.`,
+    document:`Document assessment: the record was logged at ${clock} and should be evaluated for authorship, timing, context and consistency with other records. A document can establish what was written or recorded without proving that every claim inside it is true.`,
+    consequence:`Case consequence: this record documents an investigative outcome at ${clock}. It should be treated as a consequence of player action, not as independent proof of the underlying case theory.`
+  };
+  e.description=clean(`${original}\n\n${templates[type]||templates.observation}`,1400);
+  e.__nocturneEnriched=true;
+  return e;
+}
+
+function wrapEvidence(sim){
+  const e=entry(sim);
+  if(e.evidenceWrapped)return;
+  e.evidenceWrapped=true;
+  const originalAdd=sim.add.bind(sim);
+  sim.add=function(record){
+    const out=originalAdd(record||{});
+    const item=sim.evidence[sim.evidence.length-1];
+    if(item)enrichEvidence(item,sim);
+    return out;
+  };
+  for(const item of sim.evidence)enrichEvidence(item,sim);
+}
+
+function register(sim){entry(sim);wrapEvidence(sim);}
 function touch(sim){entry(sim).lastActive=Date.now();}
 
 async function directRequest(sim,pid,payload={}){
-  const e=entry(sim);e.lastActive=Date.now();sim.visualCooldowns=sim.visualCooldowns||new Map();
+  const e=entry(sim);wrapEvidence(sim);e.lastActive=Date.now();sim.visualCooldowns=sim.visualCooldowns||new Map();
   const remaining=30000-(Date.now()-Number(sim.visualCooldowns.get(pid)||0));
   if(remaining>0)return {error:`Visual request cooldown: ${Math.ceil(remaining/1000)}s remaining.`};
   if(!comfy.configured)return {error:'Local visual engine is not configured.'};
