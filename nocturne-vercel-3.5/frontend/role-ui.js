@@ -4,17 +4,63 @@
     window.__nocturneRoleUIInstalled=true;
     const baseRender=window.render,basePrivate=window.renderPrivate;
     let roleTimer=null;
+
     const finishRoleAction=(message)=>{
       if(roleTimer){clearTimeout(roleTimer);roleTimer=null;}
       if(typeof setBusy==='function')setBusy(false);
       if(message&&typeof toast==='function')toast(message);
     };
+
     const showRoleOutput=result=>{
       const box=$('roleOutput');
       if(!box||!result)return;
       box.innerHTML=`<div class="role-output-title">${esc(result.title||'ROLE ABILITY')}</div><div class="role-output-text">${esc(result.description||'Role ability resolved.')}</div>`;
       box.classList.add('active');
     };
+
+    /*
+      Keep a local display bridge for role results.
+      The authoritative server state is still preferred, but this makes
+      successful role actions visible immediately even if a state packet
+      arrives late or is lost during a reconnect.
+    */
+    const mirrorRoleResult=(result)=>{
+      if(!result||!result.ok||typeof S==='undefined'||!S)return;
+      S.evidence=Array.isArray(S.evidence)?S.evidence:[];
+      S.events=Array.isArray(S.events)?S.events:[];
+
+      const title=String(result.title||'Role ability resolved.');
+      const description=String(result.description||'Role ability completed successfully.');
+      const source=String(me?.name||'ROLE');
+      const now=String(S.clock||'--:--');
+
+      if(!S.evidence.some(e=>e.title===title&&e.source===source)){
+        S.evidence.push({
+          id:'role-'+Date.now()+'-'+Math.random().toString(36).slice(2),
+          createdAt:now,
+          reliability:70,
+          visibility:'public',
+          type:'role-action',
+          title,
+          description,
+          source
+        });
+      }
+
+      const eventText=`${source} · ${title}: ${description}`;
+      if(!S.events.some(e=>e.text===eventText)){
+        S.events.push({
+          id:'role-event-'+Date.now()+'-'+Math.random().toString(36).slice(2),
+          time:now,
+          type:'ROLE',
+          text:eventText,
+          privateTo:null
+        });
+      }
+
+      try{baseRender();renderRolePanel();}catch(error){console.error('[NOCTURNE] Role display bridge error:',error);}
+    };
+
     const roleAction=action=>{
       if(typeof setBusy==='function')setBusy(true,'Resolving role ability…');
       if(typeof sock==='undefined'||!sock||!sock.connected){
@@ -29,9 +75,11 @@
         if(typeof toast==='function')toast('The role ability did not receive a server response. Please try again.');
       },8000);
     };
+
     window.nocturneRoleAction=roleAction;
     window.nocturneNamedRoleAction=kind=>{const name=prompt(kind+' · enter the exact character name:');if(name)roleAction(kind+' '+name.trim());};
     window.nocturneKillerAction=()=>{const name=prompt('ELIMINATE · enter the exact living target name:');if(name)roleAction('KILL '+name.trim());};
+
     function renderRolePanel(){
       const box=$('act');if(!box||!me)return;
       const role=me.role||'INVESTIGATOR',free=$('free')?.value||'';
@@ -43,14 +91,28 @@
       box.innerHTML=special+`<div id="roleOutput" class="role-output"><div class="role-output-title">ROLE OUTPUT</div><div class="role-output-text">Use a role ability to receive a case-specific result here.</div></div>`+common+`<div class="composer"><input id="free" maxlength="600" placeholder="Describe exactly what your character tries to do…" value="${esc(free)}"><button class="primary" onclick="send()">DO ACTION</button></div>`;
       const killerControl=$('killerControl');if(killerControl)killerControl.innerHTML='';
     }
+
     window.render=function(){baseRender();renderRolePanel();};
     window.renderPrivate=function(){basePrivate();const killerControl=$('killerControl');if(killerControl)killerControl.innerHTML='';};
     if(typeof S!=='undefined'&&S)window.render();
+
     sock.on('stateUpdate',()=>finishRoleAction());
     sock.on('errorMessage',message=>finishRoleAction(message));
     sock.on('disconnect',()=>finishRoleAction('Connection to the case server was lost.'));
-    sock.on('roleActionResult',result=>finishRoleAction(result?.ok?'Role ability resolved.':'The role ability failed.'));
-    sock.on('roleActionOutput',result=>{finishRoleAction();showRoleOutput(result);});
+
+    sock.on('roleActionResult',result=>{
+      finishRoleAction(result?.ok?'Role ability resolved.':'The role ability failed.');
+      if(result?.ok){
+        showRoleOutput(result);
+        mirrorRoleResult(result);
+      }
+    });
+
+    sock.on('roleActionOutput',result=>{
+      finishRoleAction();
+      showRoleOutput(result);
+      mirrorRoleResult(result);
+    });
   }
   if(document.readyState==='complete')install();else window.addEventListener('load',install,{once:true});
 })();
