@@ -32,7 +32,7 @@ const validRoomCode=code=>/^[A-Z2-9]{4}$/.test(code);
 function fail(socket,message){socket.emit("errorMessage",message);}
 app.disable("x-powered-by");
 app.use(express.static(path.join(__dirname,"..","public"),{etag:true,maxAge:process.env.NODE_ENV==="production"?"1h":0}));
-app.get("/health",(req,res)=>res.json({ok:true,service:"nocturne",version:"4.1.5",rooms:rooms.size}));
+app.get("/health",(req,res)=>res.json({ok:true,service:"nocturne",version:"4.1.7",rooms:rooms.size}));
 function roomCode(){let code;do{code=Array.from({length:4},()=>ROOM_ALPHABET[Math.floor(Math.random()*ROOM_ALPHABET.length)]).join("");}while(rooms.has(code));return code;}
 function findRoom(socket){for(const room of rooms.values())if(room.players.has(socket.id))return room;return null;}
 
@@ -112,4 +112,4 @@ io.on("connection",socket=>{
   socket.on("chat",payload=>{const room=findRoom(socket);if(room)room.chat(socket.id,clean(payload?.text,800));});
   socket.on("disconnect",()=>{console.log("[NOCTURNE] socket disconnected",socket.id);const room=findRoom(socket);if(!room)return;room.remove(socket.id);if(room.players.size===0)rooms.delete(room.code);});
 });
-server.listen(PORT,()=>console.log(`NOCTURNE 4.1.5 online server listening on port ${PORT}`));
+server.listen(PORT,()=>console.log(`NOCTURNE 4.1.7 online server listening on port ${PORT}`));
