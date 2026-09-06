@@ -85,15 +85,6 @@
     s.on('roleActionResult',result=>{console.log('[NOCTURNE] ROLE RESULT',result);finish(result?.ok?'Role ability resolved.':(result?.message||'Role ability failed.'));if(result?.ok)showOutput(result);});
     s.on('roleActionOutput',result=>{console.log('[NOCTURNE] ROLE OUTPUT',result);finish();showOutput(result);});
 
-    document.addEventListener('click',event=>{
-      const el=event.target.closest?.('[data-role-action],[data-role-named]');
-      if(!el)return;
-      event.preventDefault();
-      event.stopPropagation();
-      if(el.dataset.roleAction)send(el.dataset.roleAction);
-      else if(el.dataset.roleNamed)named(el.dataset.roleNamed);
-    },true);
-
     if(typeof S!=='undefined'&&S)window.render();
     console.log('[NOCTURNE] ROLE SYSTEM READY',window.__nocturneRoleDiagnostics());
   }
