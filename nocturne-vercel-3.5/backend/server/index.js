@@ -32,7 +32,7 @@ const validRoomCode=code=>/^[A-Z2-9]{4}$/.test(code);
 function fail(socket,message){socket.emit("errorMessage",message);}
 app.disable("x-powered-by");
 app.use(express.static(path.join(__dirname,"..","public"),{etag:true,maxAge:process.env.NODE_ENV==="production"?"1h":0}));
-app.get("/health",(req,res)=>res.json({ok:true,service:"nocturne",version:"4.1.4",rooms:rooms.size}));
+app.get("/health",(req,res)=>res.json({ok:true,service:"nocturne",version:"4.1.5",rooms:rooms.size}));
 function roomCode(){let code;do{code=Array.from({length:4},()=>ROOM_ALPHABET[Math.floor(Math.random()*ROOM_ALPHABET.length)]).join("");}while(rooms.has(code));return code;}
 function findRoom(socket){for(const room of rooms.values())if(room.players.has(socket.id))return room;return null;}
 
@@ -45,7 +45,7 @@ io.on("connection",socket=>{
   socket.on("playerAction",async payload=>{const room=findRoom(socket);if(room)await room.action(socket.id,clean(payload?.action,600));else fail(socket,"You are not in a case room.");});
   socket.on("killerDecision",()=>{const room=findRoom(socket);if(room)room.killerDecision(socket.id);});
 
-  socket.on("roleAction",payload=>{
+  socket.on("roleAction",async payload=>{
     const room=findRoom(socket);
     const action=clean(payload?.action,300);
     console.log("[NOCTURNE] roleAction received",socket.id,JSON.stringify(action),room?.code||"NO_ROOM");
@@ -66,7 +66,17 @@ io.on("connection",socket=>{
       if(!actor.alive)return fail(socket,"Your character is no longer active.");
       const beforeEvidence=room.sim.evidence.length;
       const beforeEvents=room.sim.events.length;
-      const result=room.sim.roleAction(socket.id,action);
+      const originalEmit=room.sim.emit;
+      let suppressDepth=(room.sim.__nocturneRoleEmitSuppressed||0)+1;
+      room.sim.__nocturneRoleEmitSuppressed=suppressDepth;
+      room.sim.emit=function(){};
+      let result;
+      try{
+        result=await room.sim.roleAction(socket.id,action);
+      }finally{
+        room.sim.emit=originalEmit;
+        room.sim.__nocturneRoleEmitSuppressed=Math.max(0,suppressDepth-1);
+      }
       if(!result||typeof result!=="object"){
         console.error("[NOCTURNE] roleAction returned no result",room.code,actor.name,action);
         socket.emit("roleActionResult",{ok:false,action,message:"The role ability did not return a result from the case engine."});
@@ -79,14 +89,11 @@ io.on("connection",socket=>{
           room.sim.add({type:"role-action",title:result.title||"Role ability completed",description:result.description||`${actor.name} completed ${action}.`,reliability:70,source:actor.name,visibility:"public"});
           room.sim.event("ROLE",`${actor.name} used ${action}.`);
         }
-        if(typeof room.sim.emit==="function")room.sim.emit();
         const finalResult={...result,action,evidenceCreated:room.sim.evidence.length>beforeEvidence,eventCreated:room.sim.events.length>beforeEvents,evidence:room.sim.evidence.slice(beforeEvidence).slice(-3),events:room.sim.events.slice(beforeEvents).slice(-3)};
-        setImmediate(()=>{
-          if(!socket.connected)return;
-          socket.emit("roleActionOutput",finalResult);
-          socket.emit("roleActionResult",finalResult);
-        });
-        console.log("[NOCTURNE] roleAction success",room.code,actor.name,action,"evidence",room.sim.evidence.length-beforeEvidence,"events",room.sim.events.length-beforeEvents);
+        if(typeof room.sim.emit==="function")room.sim.emit();
+        socket.emit("roleActionOutput",finalResult);
+        socket.emit("roleActionResult",finalResult);
+        console.log("[NOCTURNE] roleAction success",room.code,actor.name,action,"aiUsed",!!result.aiUsed,"outcome",result.outcome,"evidence",room.sim.evidence.length-beforeEvidence,"events",room.sim.events.length-beforeEvents);
       }else{
         socket.emit("roleActionResult",{...result,ok:false,action});
       }
@@ -105,4 +112,4 @@ io.on("connection",socket=>{
   socket.on("chat",payload=>{const room=findRoom(socket);if(room)room.chat(socket.id,clean(payload?.text,800));});
   socket.on("disconnect",()=>{console.log("[NOCTURNE] socket disconnected",socket.id);const room=findRoom(socket);if(!room)return;room.remove(socket.id);if(room.players.size===0)rooms.delete(room.code);});
 });
-server.listen(PORT,()=>console.log(`NOCTURNE 4.1.4 online server listening on port ${PORT}`));
+server.listen(PORT,()=>console.log(`NOCTURNE 4.1.5 online server listening on port ${PORT}`));
