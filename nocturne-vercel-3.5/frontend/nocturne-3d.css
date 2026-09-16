@@ -1,0 +1,39 @@
+/* NOCTURNE 3D EXPERIENCE
+   Additive visual layer. Existing game layout remains authoritative. */
+
+#nocturne3d-root{
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  overflow:hidden;
+  opacity:0;
+  transition:opacity .8s ease;
+  background:radial-gradient(circle at 50% 35%,rgba(30,48,58,.12),transparent 52%),#05080b;
+}
+body.nocturne3d-ready #nocturne3d-root{opacity:1}
+#nocturne3d-root canvas{display:block;width:100%;height:100%}
+body.nocturne3d-active main,body.nocturne3d-active header,body.nocturne3d-active footer{position:relative;z-index:2}
+.nocturne3d-vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 42%,rgba(0,0,0,.22) 100%)}
+
+#nocturne3d-controls{position:fixed;right:20px;bottom:20px;z-index:30;display:none;align-items:center;gap:8px;pointer-events:auto}
+body.nocturne3d-game #nocturne3d-controls{display:flex}
+.nocturne3d-btn{appearance:none;border:1px solid rgba(190,220,225,.18);background:rgba(7,12,15,.78);color:rgba(235,245,246,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:10px;padding:9px 12px;font:600 10px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.13em;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.05);transition:transform .22s ease,border-color .22s ease,background .22s ease}
+.nocturne3d-btn:hover{transform:translateY(-2px);border-color:rgba(210,235,238,.38);background:rgba(10,17,21,.9)}
+.nocturne3d-btn.active{border-color:rgba(160,215,220,.52);box-shadow:0 0 28px rgba(100,190,200,.12),inset 0 1px rgba(255,255,255,.07)}
+
+#nocturne3d-map{position:fixed;inset:7vh 7vw;z-index:29;display:none;pointer-events:none;border:1px solid rgba(190,220,225,.16);border-radius:18px;overflow:hidden;background:rgba(4,8,11,.18);box-shadow:0 30px 100px rgba(0,0,0,.5),inset 0 1px rgba(255,255,255,.06)}
+#nocturne3d-map.open{display:block;animation:nocturneMapIn .45s cubic-bezier(.2,.75,.25,1)}
+@keyframes nocturneMapIn{from{opacity:0;transform:scale(.97) translateY(10px)}to{opacity:1;transform:none}}
+.nocturne3d-map-head{position:absolute;left:0;right:0;top:0;z-index:3;display:flex;justify-content:space-between;align-items:center;padding:16px 18px;background:linear-gradient(180deg,rgba(4,8,11,.9),rgba(4,8,11,.2));pointer-events:none}
+.nocturne3d-map-head>div{pointer-events:auto}
+.nocturne3d-map-kicker{font:600 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;color:rgba(180,215,218,.62)}
+.nocturne3d-map-title{margin-top:5px;font:600 17px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:#edf5f5}
+.nocturne3d-map-close{pointer-events:auto}
+.nocturne3d-map-hint{position:absolute;left:18px;bottom:15px;z-index:3;font:500 9px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;color:rgba(220,236,238,.55);pointer-events:none}
+.nocturne3d-map-legend{position:absolute;right:18px;bottom:15px;z-index:3;display:flex;gap:10px;font:500 8px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:rgba(220,236,238,.62);pointer-events:none}
+.nocturne3d-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;background:#d9eeee;box-shadow:0 0 8px currentColor}.nocturne3d-dot.npc{background:#9caeb3}.nocturne3d-dot.cctv{background:#d5b87d}
+.nocturne3d-tooltip{position:fixed;z-index:40;display:none;max-width:240px;padding:10px 12px;border:1px solid rgba(190,220,225,.2);border-radius:9px;background:rgba(5,9,12,.9);color:#e9f2f3;box-shadow:0 16px 45px rgba(0,0,0,.4);backdrop-filter:blur(14px);pointer-events:none;font:500 10px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}.nocturne3d-tooltip b{display:block;font-size:11px;letter-spacing:.08em;margin-bottom:3px}.nocturne3d-tooltip span{color:rgba(220,236,238,.58)}
+body.nocturne3d-map-open{overflow:hidden}body.nocturne3d-map-open #nocturne3d-root{z-index:28;pointer-events:auto}body.nocturne3d-map-open #nocturne3d-root canvas{cursor:grab}body.nocturne3d-map-open #nocturne3d-root canvas:active{cursor:grabbing}body.nocturne3d-map-open header,body.nocturne3d-map-open main,body.nocturne3d-map-open footer{z-index:20}
+@media(max-width:720px){#nocturne3d-controls{right:12px;bottom:12px}#nocturne3d-map{inset:2vh 2vw;border-radius:14px}.nocturne3d-map-legend{display:none}.nocturne3d-map-hint{bottom:12px}}
+@media(prefers-reduced-motion:reduce){#nocturne3d-root,.nocturne3d-btn{transition:none}#nocturne3d-map.open{animation:none}}

@@ -28,6 +28,26 @@ window.NOCTURNE_SERVER_URL = "https://nocturne-8tko.onrender.com";
     stability.onload=()=>console.log("[NOCTURNE] stability-fixes.js loaded");
     stability.onerror=()=>console.error("[NOCTURNE] stability-fixes.js FAILED TO LOAD");
     document.head.appendChild(stability);
+
+    const threeCss=document.createElement("link");
+    threeCss.rel="stylesheet";
+    threeCss.href="/nocturne-3d.css?v=4.3.0";
+    threeCss.onload=()=>console.log("[NOCTURNE] nocturne-3d.css loaded");
+    threeCss.onerror=()=>console.error("[NOCTURNE] nocturne-3d.css FAILED TO LOAD");
+    document.head.appendChild(threeCss);
+
+    const threeUiCss=document.createElement("link");
+    threeUiCss.rel="stylesheet";
+    threeUiCss.href="/nocturne-3d-ui.css?v=4.3.0";
+    threeUiCss.onload=()=>console.log("[NOCTURNE] nocturne-3d-ui.css loaded");
+    threeUiCss.onerror=()=>console.error("[NOCTURNE] nocturne-3d-ui.css FAILED TO LOAD");
+    document.head.appendChild(threeUiCss);
+
+    const three=document.createElement("script");
+    three.src="/nocturne-3d-runtime.js?v=4.3.0";
+    three.onload=()=>console.log("[NOCTURNE] nocturne-3d-runtime.js loaded");
+    three.onerror=()=>console.error("[NOCTURNE] nocturne-3d-runtime.js FAILED TO LOAD");
+    document.head.appendChild(three);
   }
 
   if(document.readyState==='loading')setTimeout(loadExtras,0);

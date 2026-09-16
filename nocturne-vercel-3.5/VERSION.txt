@@ -1,10 +1,10 @@
-NOCTURNE 4.2.1
+NOCTURNE 4.3.0
 Created & Owned by Kavish Koradia
 Copyright © 2026 Kavish Koradia
 Public Frontend: https://nocturne-dun-xi.vercel.app
 Backend: https://nocturne-8tko.onrender.com
 
-NOCTURNE 4.2.1 includes:
+NOCTURNE 4.3.0 includes:
 - Multiplayer role authority and randomized non-Killer investigator specialties
 - Immediate server-side role-action results with optional AI refinement
 - Separate Evidence and Case Feed records for role actions
@@ -17,4 +17,9 @@ NOCTURNE 4.2.1 includes:
 - No per-player visual request cooldown
 - Same-source visual generation concurrency protection
 - Frontend runtime guards for role rendering and visual requests
+- Interactive Three.js 3D experience layer
+- Procedural 3D spatial map generated from live case locations
+- Live player and NPC location markers
+- Interactive location focus and CCTV markers
+- Cinematic map controls with reduced-motion support
 - Repository-wide Node syntax checking in GitHub Actions
