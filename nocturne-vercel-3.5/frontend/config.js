@@ -37,9 +37,9 @@ window.NOCTURNE_SERVER_URL = "https://nocturne-8tko.onrender.com";
     document.head.appendChild(threeCss);
 
     const three=document.createElement("script");
-    three.src="/nocturne-3d.js?v=4.3.0";
-    three.onload=()=>console.log("[NOCTURNE] nocturne-3d.js loaded");
-    three.onerror=()=>console.error("[NOCTURNE] nocturne-3d.js FAILED TO LOAD");
+    three.src="/nocturne-3d-runtime.js?v=4.3.0";
+    three.onload=()=>console.log("[NOCTURNE] nocturne-3d-runtime.js loaded");
+    three.onerror=()=>console.error("[NOCTURNE] nocturne-3d-runtime.js FAILED TO LOAD");
     document.head.appendChild(three);
   }
 
